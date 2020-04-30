@@ -8,3 +8,5 @@ Each of the 5 methods are implemented in one script called "IterativeSolvers":
 5. Multigrid
 
 There is a variable called "method" that needs to be changed when looking at the different iterative methods. The possible methods are: "PJ", "GS", "SOR", "CG", or "MG".
+
+I've altered the function "print_current_data" so that it prints $\nabla \phi$

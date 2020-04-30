@@ -7,6 +7,6 @@ Each of the 5 methods are implemented in one script called "IterativeSolvers":
 4. Conjugate gradient
 5. Multigrid
 
-There is a variable called "method" that needs to be changed when looking at the different iterative methods. The possible methods are: "PJ", "GS", "SOR", "CG", or "MG".
+There is a variable called "method" that needs to be changed when running the code to test any of the iterative methods. The possible methods are: "PJ", "GS", "SOR", "CG", or "MG".
 
-I've altered the function "print_current_data" so that it prints $\nabla \phi$
+I've altered the function "print_current_data" so that it prints laplace_phi, f, phi, and error but I haven't tested it out so I'm not sure if it works yet.

@@ -82,8 +82,8 @@ int main() {
     Initializing variables -------------------------------------------------------------------------------- */
     
     char method[] = "PJ";      //possible methods "PJ", "GS", "SOR", "CG", "MG"
-    int print_now;             //just allows us to print
 
+    int i, j;
 
 
 

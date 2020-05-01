@@ -85,21 +85,49 @@ int main() {
 
     int i, j;
 
-
+    int Nx = 11;
+    int Ny = 11;
+    double nx = Nx;
+    double ny = Ny;
+    double D_x = 1 / (nx - 1);
+    double D_y = 1 / (ny - 1);
+    double x = 0;
+    double y = 0;
 
     /* ----------------------------------------------------------------------------------------------------------
     Initializing f -------------------------------------------------------------------------------- */
 
+    double** f = (double**)calloc(ny, sizeof(double*));
+    double** phi = (double**)calloc(ny, sizeof(double*));
+    double** laplace_phi = (double**)calloc(ny, sizeof(double*));
 
+    for (i = 0; i < nx; i++) {
+        f[i] = (double*)calloc(nx, sizeof(double));
+        phi[i] = (double*)calloc(nx, sizeof(double));
+        laplace_phi[i] = (double*)calloc(nx, sizeof(double));
 
+    }
 
+    for (j = 0; j < ny; j++) {
+        for (i = 0; i < nx; i++) {
+            f[j][i] = exp((-pow(x - 0.75, 2) - pow(y - 0.75, 2)) / pow(0.05, 2)) - exp((-pow(x - 0.25, 2) - pow(y - 0.25, 2)) / pow(0.05, 2));
+            
+            x += D_x;
+            y += D_y;
+        }
+    }
 
+    /*=============================================== SOLVERS =================================================*/
 
     /* ----------------------------------------------------------------------------------------------------------
     Point Jacobi method -------------------------------------------------------------------------------- */
 
     if ( strcmp(method, "PJ") == 0 ) {
-        
+        for (j = 0; j < ny; j++) {
+            for (i = 0; i < nx; i++) {
+            
+        }
+    }
 
 
 
@@ -110,7 +138,11 @@ int main() {
     Gauss Seidel method -------------------------------------------------------------------------------- */
 
     if ( strcmp(method, "GS") == 0 ) {
-
+        for (j = 0; j < ny; j++) {
+            for (i = 0; i < nx; i++) {
+            
+        }
+    }
 
 
 

@@ -89,7 +89,7 @@ int main() {
     /* ----------------------------------------------------------------------------------------------------------
     Initializing variables -------------------------------------------------------------------------------- */
     
-    char method[] = "GS";      //possible methods "PJ", "GS", "SOR", "CG", "MG"
+    char method[] = "SOR";      //possible methods "PJ", "GS", "SOR", "CG", "MG"
 
     int i, j;
     int step = 0;
@@ -110,6 +110,10 @@ int main() {
     double epsilon = pow(10, -3);
     double RHS;
     double integral;
+
+    double omega = 1.3;   /* SOR method variables */
+    double phi_GS;
+    double d_GS;
 
     int print_now;
 
@@ -461,7 +465,166 @@ int main() {
 
     if ( strcmp(method, "SOR") == 0 ) {
         
+        f_norm = 0; /* compute f_norm */
+        for (j = 0; j < Ny; j++) {
+            for (i = 0; i < Nx; i++) {
+                f_norm = f_norm + pow(f[j][i], 2);
+            }
+        }
 
+        f_norm = sqrt(f_norm);
+
+
+
+
+        do {
+
+
+            for (j = 1; j < Ny - 1; j++) {
+                for (i = 1; i < Nx - 1; i++) {
+
+                    phi_GS = (phi[j][i + 1] + phi[j][i - 1] + phi[j - 1][i] + phi[j + 1][i]) / 4 - f[j][i] / (4 * lambda);
+                    d_GS = phi_GS - phi[j][i];
+                    phi[j][i] += omega * d_GS;
+
+                }
+
+            }
+
+            //update left boundary values
+            for (j = 1; j < Ny - 1; j++) {
+                i = 0;
+                phi_GS = (phi[j][i + 1] + phi[j - 1][i] + phi[j + 1][i]) / 3 - f[j][i] / (3 * lambda);
+                d_GS = phi_GS - phi[j][i];
+                phi[j][i] += omega * d_GS;
+
+            }
+
+            //update right boundary values
+            for (j = 1; j < Ny - 1; j++) {
+                i = Nx - 1;
+                phi_GS = (phi[j][i - 1] + phi[j - 1][i] + phi[j + 1][i]) / 3 - f[j][i] / (3 * lambda);
+                d_GS = phi_GS - phi[j][i];
+                phi[j][i] += omega * d_GS;
+
+            }
+
+            //update bottom boundary values 
+            for (i = 1; i < Nx - 1; i++) {
+                j = 0;
+                phi_GS = (phi[j][i + 1] + phi[j][i - 1] + phi[j + 1][i]) / 3 - f[j][i] / (3 * lambda);
+                d_GS = phi_GS - phi[j][i];
+                phi[j][i] += omega * d_GS;
+
+            }
+
+            //update top boundary values
+            for (i = 1; i < Nx - 1; i++) {
+                j = Ny - 1;
+                phi_GS = (phi[j][i + 1] + phi[j][i - 1] + phi[j - 1][i]) / 3 - f[j][i] / (3 * lambda);
+                d_GS = phi_GS - phi[j][i];
+                phi[j][i] += omega * d_GS;
+
+            }
+
+            //update corner points
+            phi_GS = (phi[1][0] + phi[0][1]) / 2 - f[0][0] / (2 * lambda);
+            d_GS = phi_GS - phi[0][0];
+            phi[0][0] += omega * d_GS;
+
+            phi_GS = (phi[1][Nx - 1] + phi[0][Nx - 2]) / 2 - f[0][Nx - 1] / (2 * lambda);
+            d_GS = phi_GS - phi[0][Nx - 1];
+            phi[0][Nx - 1] += omega * d_GS;
+
+            phi_GS = (phi[Ny - 1][1] + phi[Ny - 2][0]) / 2 - f[Ny - 1][0] / (2 * lambda);
+            d_GS = phi_GS - phi[Ny - 1][0];
+            phi[Ny - 1][0] += omega * d_GS;
+
+            phi_GS = (phi[Ny - 1][Nx - 2] + phi[Ny - 2][Nx - 1]) / 2 - f[Ny - 1][Nx - 1] / (2 * lambda);
+            d_GS = phi_GS - phi[Ny - 1][Nx - 1];
+            phi[Ny - 1][Nx - 1] += omega * d_GS;
+
+
+
+            //compute laplace_p matrix
+            for (j = 1; j < Ny - 1; j++) {
+                for (i = 1; i < Nx - 1; i++) {
+                    laplace_phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j - 1][i] + phi[j + 1][i]) * lambda - 4 * lambda * phi[j][i];
+                }
+            }
+            for (j = 1; j < Ny - 1; j++) {
+                i = 0;
+                laplace_phi[j][i] = (phi[j][i + 1] + phi[j - 1][i] + phi[j + 1][i]) * lambda - phi[j][i] * (3 * lambda);
+            }
+            for (j = 1; j < Ny - 1; j++) {
+                i = Nx - 1;
+                laplace_phi[j][i] = (phi[j][i - 1] + phi[j - 1][i] + phi[j + 1][i]) * lambda - phi[j][i] * (3 * lambda);
+            }
+            for (i = 1; i < Nx - 1; i++) {
+                j = 0;
+                laplace_phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j + 1][i]) * lambda - phi[j][i] * (3 * lambda);
+            }
+            for (i = 1; i < Nx - 1; i++) {
+                j = Ny - 1;
+                laplace_phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j - 1][i]) * lambda - phi[j][i] * (3 * lambda);
+            }
+            laplace_phi[0][0] = (phi[1][0] + phi[0][1]) * lambda - phi[0][0] * (2 * lambda);
+            laplace_phi[0][Nx - 1] = (phi[1][Nx - 1] + phi[0][Nx - 2]) * lambda - phi[0][Nx - 1] * (2 * lambda);
+            laplace_phi[Ny - 1][0] = (phi[Ny - 1][1] + phi[Ny - 2][0]) * lambda - phi[Ny - 1][0] * (2 * lambda);
+            laplace_phi[Ny - 1][Nx - 1] = (phi[Ny - 1][Nx - 2] + phi[Ny - 2][Nx - 1]) * lambda - phi[Ny - 1][Nx - 1] * (2 * lambda);
+
+
+
+            //compute the norm
+            laplace_phi_minus_f_norm = 0;
+
+            for (j = 0; j < Ny; j++) {
+                for (i = 0; i < Nx; i++) {
+                    laplace_phi_minus_f_norm = laplace_phi_minus_f_norm + pow((laplace_phi[j][i] - f[j][i]), 2);
+                }
+            }
+
+            
+
+            laplace_phi_minus_f_norm = sqrt(laplace_phi_minus_f_norm);
+
+
+            if (f_norm == 0) {
+                RHS = epsilon;
+            }
+            else {
+                RHS = epsilon * f_norm;
+            }
+
+
+            //save the error here and break out of the loop if the max number of steps has been reached
+            error[step] = laplace_phi_minus_f_norm;
+
+            if (step == max_num_steps) {
+                break;
+            }
+
+            step += 1; 
+
+        } while (laplace_phi_minus_f_norm > RHS);
+
+
+        // Impose condition that the integral over the domain is equal to zero
+        integral = 0;
+        for (j = 0; j < Ny; j++) {
+            for (i = 0; i < Nx; i++) {
+                integral += phi[j][i] * D_x * D_y;
+            }
+        }
+
+        for (j = 0; j < Ny; j++) {
+            for (i = 0; i < Nx; i++) {
+                phi[j][i] = phi[j][i] - integral / (Nx * Ny);
+            }
+        }
+
+        print_now = print_current_data(step, laplace_phi, f, phi, error, Nx, Ny, method);
+        printf("Data was printed for Successive over-relaxation method");
 
 
     }

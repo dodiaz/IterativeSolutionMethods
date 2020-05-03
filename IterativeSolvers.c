@@ -89,7 +89,11 @@ int main() {
     /* ----------------------------------------------------------------------------------------------------------
     Initializing variables -------------------------------------------------------------------------------- */
     
+<<<<<<< HEAD
     char method[] = "SOR";      //possible methods "PJ", "GS", "SOR", "CG", "MG"
+=======
+    char method[] = "GS";      //possible methods "PJ", "GS", "SOR", "CG", "MG"
+>>>>>>> a3f4acbd3d36b6f2f106259635777b6dce939366
 
     int i, j;
     int step = 0;
@@ -111,10 +115,13 @@ int main() {
     double RHS;
     double integral;
 
+<<<<<<< HEAD
     double omega = 1.3;   /* SOR method variables */
     double phi_GS;
     double d_GS;
 
+=======
+>>>>>>> a3f4acbd3d36b6f2f106259635777b6dce939366
     int print_now;
 
     /* ----------------------------------------------------------------------------------------------------------
@@ -444,6 +451,7 @@ int main() {
             for (i = 0; i < Nx; i++) {
                 integral += phi[j][i] * D_x * D_y;
             }
+<<<<<<< HEAD
         }
 
         for (j = 0; j < Ny; j++) {
@@ -452,6 +460,16 @@ int main() {
             }
         }
 
+=======
+        }
+
+        for (j = 0; j < Ny; j++) {
+            for (i = 0; i < Nx; i++) {
+                phi[j][i] = phi[j][i] - integral / (Nx * Ny);
+            }
+        }
+
+>>>>>>> a3f4acbd3d36b6f2f106259635777b6dce939366
         print_now = print_current_data(step, laplace_phi, f, phi, error, Nx, Ny, method);
         printf("Data was printed for Gauss-Seidel method");
 

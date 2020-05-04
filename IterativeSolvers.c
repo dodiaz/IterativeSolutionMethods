@@ -89,11 +89,11 @@ int main() {
     /* ----------------------------------------------------------------------------------------------------------
     Initializing variables -------------------------------------------------------------------------------- */
     
-    char method[] = "SOR";      //possible methods "PJ", "GS", "SOR", "CG", "MG"
+    char method[] = "CG";      //possible methods "PJ", "GS", "SOR", "CG", "MG"
 
     int i, j;
     int step = 0;
-    int max_num_steps = 2000;   //Increase this number if the method isn't converging
+    int max_num_steps = 10000;   //Increase this number if the method isn't converging
 
     int Nx = 11;
     int Ny = 11;
@@ -110,6 +110,7 @@ int main() {
     double epsilon = pow(10, -3);
     double RHS;
     double integral;
+    double sum;
 
     double omega = 1.3;   /* SOR method variables */
     double phi_GS;
@@ -126,6 +127,7 @@ int main() {
     double** phi = (double**)calloc(ny, sizeof(double*));
     double** phi_new = (double**)calloc(ny, sizeof(double*));
     double** laplace_phi = (double**)calloc(ny, sizeof(double*));
+    
 
     for (i = 0; i < nx; i++) {
         f[i] = (double*)calloc(nx, sizeof(double));
@@ -134,6 +136,27 @@ int main() {
         laplace_phi[i] = (double*)calloc(nx, sizeof(double));
 
     }
+
+
+    // The following variables are used in conjugate gradient method
+    double** A = (double**)calloc(ny*nx, sizeof(double*));
+    for (i = 0; i <nx*ny; i++) {
+        A[i] = (double*)calloc(nx*ny, sizeof(double));
+    }
+
+    double* phi_vec = (double*)calloc(nx*ny, sizeof(double));
+    double* f_vec = (double*)calloc(nx*ny, sizeof(double));
+    double* r = (double*)calloc(nx*ny, sizeof(double));
+    double* d = (double*)calloc(nx*ny, sizeof(double));
+    double* epsilon_vec = (double*)calloc(nx*ny, sizeof(double));
+    double* rho = (double*)calloc(max_num_steps, sizeof(double));
+
+    double beta;
+    double alpha;
+
+
+    
+
 
     for (j = 0; j < Ny; j++) {
         for (i = 0; i < Nx; i++) {
@@ -635,7 +658,235 @@ int main() {
 
     if ( strcmp(method, "CG") == 0 ) {
 
+        /* compute A matrix */
 
+        //top left point
+        A[0][0] = -2*lambda;
+        A[0][1] = lambda;
+        A[0][Nx] = lambda;
+
+        //top right point
+        A[Nx - 1][Nx - 1] = -2 * lambda;
+        A[Nx - 1][Nx - 2] = lambda;
+        A[Nx - 1][2 * Nx - 1] = lambda;
+        
+        //bottom left point
+        A[(Ny - 1)* Nx][(Ny - 1)* Nx] = -2 * lambda;
+        A[(Ny - 1)* Nx][(Ny - 1)* Nx + 1] = lambda;
+        A[(Ny - 1)* Nx][(Ny - 2)* Nx] = lambda;
+        
+        //bottom right point
+        A[Ny*Nx - 1][Ny*Nx - 1] = -2 * lambda; 
+        A[Ny*Nx - 1][Ny*Nx - 2] = lambda;
+        A[Ny*Nx - 1][(Ny-1)*Nx - 1] = lambda;
+
+
+        //top boudary points
+        for (i = 1; i < Nx - 1; i++) {
+            A[i][i] = -3 * lambda;
+            A[i][i - 1] = lambda;
+            A[i][i + 1] = lambda;
+            A[i][i + Nx] = lambda; 
+        }
+
+        //bottom boundary points 
+        for (i = 1; i < Nx - 1; i++) {
+            A[Nx*(Ny-1) + i][Nx*(Ny-1) + i] = -3 * lambda;
+            A[Nx*(Ny-1) + i][Nx*(Ny-1) + i + 1] = lambda;
+            A[Nx*(Ny-1) + i][Nx*(Ny-1) + i - 1] = lambda;
+            A[Nx*(Ny-1) + i][Nx*(Ny-1) + i - Nx] = lambda;
+        }
+
+        //left boundary points
+        for (i = 1; i < Ny - 1; i++) {
+            A[i*Nx][i*Nx] = - 3 * lambda;
+            A[i*Nx][i*Nx + 1] = lambda;
+            A[i*Nx][(i - 1)*Nx] = lambda;
+            A[i*Nx][(i + 1)*Nx] = lambda;
+        }
+
+
+        //right boundary points
+        for (i = 2; i < Ny; i++) {
+            A[i*Nx - 1][i*Nx - 1] = -3 * lambda;
+            A[i*Nx - 1][i*Nx - 2] = lambda;
+            A[i*Nx - 1][(i - 1)*Nx - 1] = lambda;
+            A[i*Nx - 1][(i + 1)*Nx - 1] = lambda;
+        }
+
+
+        //interior points
+        for (j = 1; j < Ny - 1; j++) {
+            for (i = 1; i < Nx - 1; i++) {
+                A[j * Nx + i][j * Nx + i] = -4 * lambda;
+                A[j * Nx + i][j * Nx + i + 1] = lambda;
+                A[j * Nx + i][j * Nx + i - 1] = lambda;
+                A[j * Nx + i][j * Nx + i + Nx] = lambda;
+                A[j * Nx + i][j * Nx + i - Nx] = lambda;
+            }
+        }
+
+
+
+        /* compute f_vec vector */
+
+        for (j = 0; j < Ny; j++) {
+            for(i = 0; i < Nx; i++) {
+                f_vec[i + Nx*j] = f[j][i];
+            }
+        }
+
+        /*  USED THIS TO PRINT A AND MAKE SURE IT LOOKS GOOD... AND IT LOOKS RIGHT
+        //print array to make sure it looks good
+        for (j = 0; j < Ny*Nx; j++) {
+            for (i = 1; i < Ny*Nx; i++) {
+                printf("%f ", A[j][i]);
+            }
+            printf(" \n");
+        }
+
+        //save A to text file to look at it
+        char filename1[] = "A_matrix.txt";
+
+        FILE* fpointer1 = fopen(filename1, "w");
+        for (j = 0; j < Nx*Ny; j++) {
+            for (i = 0; i < Nx*Ny; i++) {
+                fprintf(fpointer1, "%.20lf ", A[j][i]);
+            }
+            fprintf(fpointer1, "\n");
+        }
+        fclose(fpointer1);
+        */
+
+
+        // Initialization
+        for (i = 0; i < Nx*Ny; i++) {
+            sum = 0;
+            for (j = 0; j < Nx*Ny; j++) {
+                sum += A[i][j]*phi_vec[j];
+            }
+
+            r[i] = f_vec[i] - sum;
+        }
+        
+        
+        for (i = 0; i < Nx*Ny; i++) {
+            rho[0] += pow(r[i], 2);
+        }
+        
+
+        
+
+        do {
+
+            error[step] = sqrt(rho[step]);
+            printf("Step %d has error %f \n", step, error[step]);
+            step += 1;
+
+            if (step == 1) {
+
+                for (i = 0; i < Nx*Ny; i++) {
+                    d[i] = r[i];
+                }
+
+            }
+            else {
+                beta = rho[step - 1] / rho[step - 2];
+
+                for (i = 0; i < Nx*Ny; i++) {
+                    d[i] = r[i] + beta * d[i];
+                }
+
+            }
+
+
+            for (i = 0; i < Nx*Ny; i++) {
+                epsilon_vec[i] = 0;
+                for (j = 0; j < Nx*Ny; j++) {
+                    epsilon_vec[i] += A[i][j] * d[j];
+                }
+            }
+
+
+            sum = 0;
+            for (i = 0; i < Nx*Ny; i++) {
+                sum += d[i]*epsilon_vec[i];
+            }
+            alpha = rho[step - 1] / sum;
+
+            
+
+            for (i = 0; i < Nx*Ny; i++) {
+                phi_vec[i] = phi_vec[i] + alpha * d[i];
+                r[i] = r[i] - alpha * epsilon_vec[i];
+            }
+
+            for (i = 0; i < Nx * Ny; i++) {
+                rho[step] += r[i] * r[i];
+            }
+
+            
+            
+
+        } while ( sqrt(rho[step]) > epsilon * sqrt(rho[0]) );
+        
+
+
+        for (j = 0; j < Ny; j++) {
+            for (i = 0; i < Nx; i++) {
+                phi[j][i] = phi_vec[j*Nx + i];
+            }
+        }
+
+        //print final error
+        error[step] = sqrt(rho[step]);
+
+
+        //compute laplace_p matrix (ONLY NECESSARY FOR VISUALIZATION)
+        for (j = 1; j < Ny - 1; j++) {
+            for (i = 1; i < Nx - 1; i++) {
+                laplace_phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j - 1][i] + phi[j + 1][i]) * lambda - 4 * lambda * phi[j][i];
+            }
+        }
+        for (j = 1; j < Ny - 1; j++) {
+            i = 0;
+            laplace_phi[j][i] = (phi[j][i + 1] + phi[j - 1][i] + phi[j + 1][i]) * lambda - phi[j][i] * (3 * lambda);
+        }
+        for (j = 1; j < Ny - 1; j++) {
+            i = Nx - 1;
+            laplace_phi[j][i] = (phi[j][i - 1] + phi[j - 1][i] + phi[j + 1][i]) * lambda - phi[j][i] * (3 * lambda);
+        }
+        for (i = 1; i < Nx - 1; i++) {
+            j = 0;
+            laplace_phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j + 1][i]) * lambda - phi[j][i] * (3 * lambda);
+        }
+        for (i = 1; i < Nx - 1; i++) {
+            j = Ny - 1;
+            laplace_phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j - 1][i]) * lambda - phi[j][i] * (3 * lambda);
+        }
+        laplace_phi[0][0] = (phi[1][0] + phi[0][1]) * lambda - phi[0][0] * (2 * lambda);
+        laplace_phi[0][Nx - 1] = (phi[1][Nx - 1] + phi[0][Nx - 2]) * lambda - phi[0][Nx - 1] * (2 * lambda);
+        laplace_phi[Ny - 1][0] = (phi[Ny - 1][1] + phi[Ny - 2][0]) * lambda - phi[Ny - 1][0] * (2 * lambda);
+        laplace_phi[Ny - 1][Nx - 1] = (phi[Ny - 1][Nx - 2] + phi[Ny - 2][Nx - 1]) * lambda - phi[Ny - 1][Nx - 1] * (2 * lambda);
+
+
+
+        // Impose condition that the integral over the domain is equal to zero
+        integral = 0;
+        for (j = 0; j < Ny; j++) {
+            for (i = 0; i < Nx; i++) {
+                integral += phi[j][i] * D_x * D_y;
+            }
+        }
+
+        for (j = 0; j < Ny; j++) {
+            for (i = 0; i < Nx; i++) {
+                phi[j][i] = phi[j][i] - integral / (Nx * Ny);
+            }
+        }
+
+        print_now = print_current_data(step, laplace_phi, f, phi, error, Nx, Ny, method);
+        printf("Data was printed for conjugate gradient method");
 
 
 
@@ -663,12 +914,23 @@ int main() {
         free(phi[i]);
         free(phi_new[i]);
         free(laplace_phi[i]);
+        free(A[i]);
     }
 
     free(f);
     free(phi);
     free(phi_new);
     free(laplace_phi);
+    free(error);
+    free(A);
+    free(f_vec);
+    free(phi_vec);
+    free(r);
+    free(d);
+    free(epsilon_vec);
+    free(rho);
+
+
 
     
 }

@@ -291,6 +291,7 @@ int main() {
     double epsilon = pow(10, -3);
     double RHS;
     double integral;
+    double sum;
 
     double omega = 1.3;   /* SOR method variables */
     double phi_GS;
@@ -298,6 +299,24 @@ int main() {
 
     int print_now;
     int GS_solving;
+
+
+    // The following variables are used in conjugate gradient method
+    double** A = (double**)calloc(ny*nx, sizeof(double*));
+    for (i = 0; i <nx*ny; i++) {
+        A[i] = (double*)calloc(nx*ny, sizeof(double));
+    }
+
+    double* phi_vec = (double*)calloc(nx*ny, sizeof(double));
+    double* f_vec = (double*)calloc(nx*ny, sizeof(double));
+    double* r = (double*)calloc(nx*ny, sizeof(double));
+    double* d = (double*)calloc(nx*ny, sizeof(double));
+    double* epsilon_vec = (double*)calloc(nx*ny, sizeof(double));
+    double* rho = (double*)calloc(max_num_steps, sizeof(double));
+
+    double beta;
+    double alpha;
+
 
     /* ----------------------------------------------------------------------------------------------------------
     Initializing f -------------------------------------------------------------------------------- */

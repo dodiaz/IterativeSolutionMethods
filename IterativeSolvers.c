@@ -81,10 +81,11 @@ int print_current_data(int step, double** laplace_phi, double** f, double** phi,
 
 
 
-/* Gauss-Seidel solver used in multigrid solver to make code more readable */
-int GS_solver(double** f, double** phi, int Nx, int Ny) {
+/* ==========================================================================
+======================= 3 Step Gauss-Seidel Solver ==========================
+========================================================================== */
 
-    printf("check 0\n");
+int GS_3step(double** f, double** phi, int Nx, int Ny, double epsilon) {
 
     /* Initilaizations */
     int i, j;
@@ -96,11 +97,10 @@ int GS_solver(double** f, double** phi, int Nx, int Ny) {
     double  f_norm;
     double integral;
     double lambda = pow(D_x, -2);
-    double epsilon = pow(10, -3);
     double RHS;    
     double laplace_phi_minus_f_norm;
     
-    int step = 0;
+    int step = 1;
     int max_num_steps = 3;
 
     double** laplace_phi = (double**)calloc(Ny, sizeof(double*));
@@ -108,7 +108,6 @@ int GS_solver(double** f, double** phi, int Nx, int Ny) {
         laplace_phi[j] = (double*)calloc(Nx, sizeof(double));
     }
 
-    printf("check 1\n");
 
     /* Solving -------------------------------------------------------------------------------- */
 
@@ -121,120 +120,126 @@ int GS_solver(double** f, double** phi, int Nx, int Ny) {
 
     f_norm = sqrt(f_norm);
 
-    printf("check 2\n");
 
-    do {
+    if (Nx > 1 && Ny > 1) {
 
-        
+        do {
 
-        for (j = 1; j < Ny - 1; j++) {
-            for (i = 1; i < Nx - 1; i++) {
-                phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j - 1][i] + phi[j + 1][i]) / 4 - f[j][i] / (4 * lambda);
+            if (Nx > 2 && Ny > 2) {
+
+                for (j = 1; j < Ny - 1; j++) {
+                    for (i = 1; i < Nx - 1; i++) {
+                        phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j - 1][i] + phi[j + 1][i]) / 4 - f[j][i] / (4 * lambda);
+
+                    }
+                }
+                
+
+                //update left boundary values
+                for (j = 1; j < Ny - 1; j++) {
+                    i = 0;
+                    phi[j][i] = (phi[j][i + 1] + phi[j - 1][i] + phi[j + 1][i]) / 3 - f[j][i] / (3 * lambda);
+
+                }
+
+                //update right boundary values
+                for (j = 1; j < Ny - 1; j++) {
+                    i = Nx - 1;
+                    phi[j][i] = (phi[j][i - 1] + phi[j - 1][i] + phi[j + 1][i]) / 3 - f[j][i] / (3 * lambda);
+
+                }
+
+                //update bottom boundary values 
+                for (i = 1; i < Nx - 1; i++) {
+                    j = 0;
+                    phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j + 1][i]) / 3 - f[j][i] / (3 * lambda);
+                }
+
+                //update top boundary values
+                for (i = 1; i < Nx - 1; i++) {
+                    j = Ny - 1;
+                    phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j - 1][i]) / 3 - f[j][i] / (3 * lambda);
+                }
 
             }
-        }
-        
-
-        //update left boundary values
-        for (j = 1; j < Ny - 1; j++) {
-            i = 0;
-            phi[j][i] = (phi[j][i + 1] + phi[j - 1][i] + phi[j + 1][i]) / 3 - f[j][i] / (3 * lambda);
-
-        }
-
-        //update right boundary values
-        for (j = 1; j < Ny - 1; j++) {
-            i = Nx - 1;
-            phi[j][i] = (phi[j][i - 1] + phi[j - 1][i] + phi[j + 1][i]) / 3 - f[j][i] / (3 * lambda);
-
-        }
-
-        //update bottom boundary values 
-        for (i = 1; i < Nx - 1; i++) {
-            j = 0;
-            phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j + 1][i]) / 3 - f[j][i] / (3 * lambda);
-        }
-
-        //update top boundary values
-        for (i = 1; i < Nx - 1; i++) {
-            j = Ny - 1;
-            phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j - 1][i]) / 3 - f[j][i] / (3 * lambda);
-        }
 
 
-        //update corner points
-        phi[0][0] = (phi[1][0] + phi[0][1]) / 2 - f[0][0] / (2 * lambda);
-        phi[0][Nx - 1] = (phi[1][Nx - 1] + phi[0][Nx - 2]) / 2 - f[0][Nx - 1] / (2 * lambda);
-        phi[Ny - 1][0] = (phi[Ny - 1][1] + phi[Ny - 2][0]) / 2 - f[Ny - 1][0] / (2 * lambda); /* ERROR HERE <== <== <== <== <== */
-        phi[Ny - 1][Nx - 1] = (phi[Ny - 1][Nx - 2] + phi[Ny - 2][Nx - 1]) / 2 - f[Ny - 1][Nx - 1] / (2 * lambda);
+            //update corner points
+            phi[0][0] = (phi[1][0] + phi[0][1]) / 2 - f[0][0] / (2 * lambda);
+            phi[0][Nx - 1] = (phi[1][Nx - 1] + phi[0][Nx - 2]) / 2 - f[0][Nx - 1] / (2 * lambda);
+            phi[Ny - 1][0] = (phi[Ny - 1][1] + phi[Ny - 2][0]) / 2 - f[Ny - 1][0] / (2 * lambda);
+            phi[Ny - 1][Nx - 1] = (phi[Ny - 1][Nx - 2] + phi[Ny - 2][Nx - 1]) / 2 - f[Ny - 1][Nx - 1] / (2 * lambda);
 
-        
+            
+            if (Nx > 2 && Ny > 2) {
 
-        //compute laplace_p matrix
-        for (j = 1; j < Ny - 1; j++) {
-            for (i = 1; i < Nx - 1; i++) {
-                laplace_phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j - 1][i] + phi[j + 1][i]) * lambda - 4 * lambda * phi[j][i];
+                //compute laplace_p matrix
+                for (j = 1; j < Ny - 1; j++) {
+                    for (i = 1; i < Nx - 1; i++) {
+                        laplace_phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j - 1][i] + phi[j + 1][i]) * lambda - 4 * lambda * phi[j][i];
+                    }
+                }
+                for (j = 1; j < Ny - 1; j++) {
+                    i = 0;
+                    laplace_phi[j][i] = (phi[j][i + 1] + phi[j - 1][i] + phi[j + 1][i]) * lambda - phi[j][i] * (3 * lambda);
+                }
+                for (j = 1; j < Ny - 1; j++) {
+                    i = Nx - 1;
+                    laplace_phi[j][i] = (phi[j][i - 1] + phi[j - 1][i] + phi[j + 1][i]) * lambda - phi[j][i] * (3 * lambda);
+                }
+                for (i = 1; i < Nx - 1; i++) {
+                    j = 0;
+                    laplace_phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j + 1][i]) * lambda - phi[j][i] * (3 * lambda);
+                }
+                for (i = 1; i < Nx - 1; i++) {
+                    j = Ny - 1;
+                    laplace_phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j - 1][i]) * lambda - phi[j][i] * (3 * lambda);
+                }
+
             }
-        }
-        for (j = 1; j < Ny - 1; j++) {
-            i = 0;
-            laplace_phi[j][i] = (phi[j][i + 1] + phi[j - 1][i] + phi[j + 1][i]) * lambda - phi[j][i] * (3 * lambda);
-        }
-        for (j = 1; j < Ny - 1; j++) {
-            i = Nx - 1;
-            laplace_phi[j][i] = (phi[j][i - 1] + phi[j - 1][i] + phi[j + 1][i]) * lambda - phi[j][i] * (3 * lambda);
-        }
-        for (i = 1; i < Nx - 1; i++) {
-            j = 0;
-            laplace_phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j + 1][i]) * lambda - phi[j][i] * (3 * lambda);
-        }
-        for (i = 1; i < Nx - 1; i++) {
-            j = Ny - 1;
-            laplace_phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j - 1][i]) * lambda - phi[j][i] * (3 * lambda);
-        }
-        laplace_phi[0][0] = (phi[1][0] + phi[0][1]) * lambda - phi[0][0] * (2 * lambda);
-        laplace_phi[0][Nx - 1] = (phi[1][Nx - 1] + phi[0][Nx - 2]) * lambda - phi[0][Nx - 1] * (2 * lambda);
-        laplace_phi[Ny - 1][0] = (phi[Ny - 1][1] + phi[Ny - 2][0]) * lambda - phi[Ny - 1][0] * (2 * lambda);
-        laplace_phi[Ny - 1][Nx - 1] = (phi[Ny - 1][Nx - 2] + phi[Ny - 2][Nx - 1]) * lambda - phi[Ny - 1][Nx - 1] * (2 * lambda);
+
+            laplace_phi[0][0] = (phi[1][0] + phi[0][1]) * lambda - phi[0][0] * (2 * lambda);
+            laplace_phi[0][Nx - 1] = (phi[1][Nx - 1] + phi[0][Nx - 2]) * lambda - phi[0][Nx - 1] * (2 * lambda);
+            laplace_phi[Ny - 1][0] = (phi[Ny - 1][1] + phi[Ny - 2][0]) * lambda - phi[Ny - 1][0] * (2 * lambda);
+            laplace_phi[Ny - 1][Nx - 1] = (phi[Ny - 1][Nx - 2] + phi[Ny - 2][Nx - 1]) * lambda - phi[Ny - 1][Nx - 1] * (2 * lambda);
 
 
 
-        //compute the norm
-        laplace_phi_minus_f_norm = 0;
+            //compute the norm
+            laplace_phi_minus_f_norm = 0;
 
-        for (j = 0; j < Ny; j++) {
-            for (i = 0; i < Nx; i++) {
-                laplace_phi_minus_f_norm = laplace_phi_minus_f_norm + pow((laplace_phi[j][i] - f[j][i]), 2);
+            for (j = 0; j < Ny; j++) {
+                for (i = 0; i < Nx; i++) {
+                    laplace_phi_minus_f_norm = laplace_phi_minus_f_norm + pow((laplace_phi[j][i] - f[j][i]), 2);
+                }
             }
-        }
 
-        
+            
 
-        laplace_phi_minus_f_norm = sqrt(laplace_phi_minus_f_norm);
-
-
-        if (f_norm == 0) {
-            RHS = epsilon;
-        }
-        else {
-            RHS = epsilon * f_norm;
-        }
+            laplace_phi_minus_f_norm = sqrt(laplace_phi_minus_f_norm);
 
 
-        /* break out of the loop if the max number of steps has been reached */
+            if (f_norm == 0) {
+                RHS = epsilon;
+            }
+            else {
+                RHS = epsilon * f_norm;
+            }
 
-        if (step == max_num_steps) {
-            break;
-        }
 
-        
-        printf("\tstep %d\n", step);
+            /* break out of the loop if the max number of steps has been reached */
+            printf("\tstep %d\n", step);
 
-        step += 1;
+            if (step == max_num_steps) {
+                break;
+            }
 
-    } while (laplace_phi_minus_f_norm > RHS);
 
-    printf("check 3\n");
+           step += 1;
+
+        } while (laplace_phi_minus_f_norm > RHS);
+    }
+
 
     /* Impose condition that the integral over the domain is equal to zero */
     integral = 0;
@@ -257,12 +262,98 @@ int GS_solver(double** f, double** phi, int Nx, int Ny) {
 
     free(laplace_phi);
 
-    printf("check 4\n");
+    printf("\tGS done\n");
 
     return 0;
 
 }
 
+/* ====================================================================================================================
+=================================== MG_recusion =======================================================================
+==================================================================================================================== */
+
+
+int MG_recursion(double** f, double** phi, int Nx, int Ny, double epsilon) {
+
+    printf("Start MG_recursion: %dx%d\n", Nx, Ny);
+
+        /* Initializing variables */
+        int finished;
+        int i, j;
+
+        double nx = Nx;
+        double ny = Ny;
+
+        double half_nx = ceil(nx / 2);
+        double half_ny = ceil(ny / 2);
+        int half_Nx = half_nx;
+        int half_Ny = half_ny;
+
+        double** phi2 = (double**)calloc(half_ny, sizeof(double*));
+        double** f2 = (double**)calloc(half_ny, sizeof(double*));
+
+        for (i = 0; i < half_Nx; i++) {
+            phi2[i] = (double*)calloc(half_nx, sizeof(double));
+            f2[i] = (double*)calloc(half_nx, sizeof(double));
+
+        }
+        
+        /* ============================================ Recursive code ============================================*/
+
+        /* Initial GS solving */
+        printf("1st GS_3step\n");
+        finished = GS_3step(f, phi, Nx, Ny, epsilon);
+        printf("done\n");
+
+        /* Shrink phi */
+        for (j = 0; j < half_Ny; j++){
+            for(i = 0; i < half_Nx;  i++) {
+
+                phi2[j][i] = phi[j * 2][i * 2];
+                f2[j][i] = f[j * 2][i * 2];
+            
+            }
+        }
+
+        
+        if (Nx > 1 && Ny > 1) {
+            finished = MG_recursion(f2, phi2, half_Nx, half_Ny, epsilon);
+        }
+        printf("Exit MG_recursion: %dx%d\n", Nx, Ny);
+
+        /* Merge phi */
+        for (j = 0; j < Ny; j += 2){
+            for(i = 0; i < Nx; i += 2) {
+
+                phi[j][i] = phi2[j / 2][i / 2];
+
+            }
+        }
+
+        /* Exit GS solving */
+        printf("2nd GS_3step\n");
+        finished = GS_3step(f, phi, Nx, Ny, epsilon);
+        printf("done\n");
+
+
+        for (j = 0; j < half_Ny; j++) {
+            free(phi2[j]);
+            free(f2[j]);
+        }
+        free(phi2);
+        free(f2);
+
+    return 0;
+}
+
+
+
+
+/* ================================================================================
+= = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+======================================= MAIN ======================================
+= = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+================================================================================ */
 
 
 int main() {
@@ -273,7 +364,7 @@ int main() {
     char method[] = "MG";      /* possible methods "PJ", "GS", "SOR", "CG", "MG" */
 
     int i, j;
-    int step = 0;
+    int step = 1;
     int max_num_steps = 2000;   /* Increase this number if the method isn't converging */
 
     int Nx = 12;
@@ -298,7 +389,7 @@ int main() {
     double d_GS;
 
     int print_now;
-    int GS_solving;
+    int finished;
 
 
     // The following variables are used in conjugate gradient method
@@ -317,9 +408,9 @@ int main() {
     double beta;
     double alpha;
 
-
-    /* ----------------------------------------------------------------------------------------------------------
-    Initializing f -------------------------------------------------------------------------------- */
+    
+    /* ----------------------------------------------------------------------------------------------------
+    Initializing arrays -------------------------------------------------------------------------------- */
 
     double* error = (double*)calloc(max_num_steps, sizeof(double));
 
@@ -1074,23 +1165,93 @@ int main() {
 
     if ( strcmp(method, "MG") == 0 ) {
 
-        printf("check start MG\n");
-        
-        phi[0][0]=7777;
-        phi[11][11]=7777;
+        printf("Start MG method\n");
 
-        printf("check in\n");
-        
-        GS_solving = GS_solver(f, phi, Nx, Ny);
-        
-        printf("check out\n");
+        do {
+            
+            printf("Iteration step %d\n", step);
+
+            MG_recursion(f, phi, Nx, Ny, epsilon);
+            
+            /* compute laplace_p matrix */
+            for (j = 1; j < Ny - 1; j++) {
+                for (i = 1; i < Nx - 1; i++) {
+                    laplace_phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j - 1][i] + phi[j + 1][i]) * lambda - 4 * lambda * phi[j][i];
+                }
+            }
+            for (j = 1; j < Ny - 1; j++) {
+                i = 0;
+                laplace_phi[j][i] = (phi[j][i + 1] + phi[j - 1][i] + phi[j + 1][i]) * lambda - phi[j][i] * (3 * lambda);
+            }
+            for (j = 1; j < Ny - 1; j++) {
+                i = Nx - 1;
+                laplace_phi[j][i] = (phi[j][i - 1] + phi[j - 1][i] + phi[j + 1][i]) * lambda - phi[j][i] * (3 * lambda);
+            }
+            for (i = 1; i < Nx - 1; i++) {
+                j = 0;
+                laplace_phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j + 1][i]) * lambda - phi[j][i] * (3 * lambda);
+            }
+            for (i = 1; i < Nx - 1; i++) {
+                j = Ny - 1;
+                laplace_phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j - 1][i]) * lambda - phi[j][i] * (3 * lambda);
+            }
+
+            laplace_phi[0][0] = (phi[1][0] + phi[0][1]) * lambda - phi[0][0] * (2 * lambda);
+            laplace_phi[0][Nx - 1] = (phi[1][Nx - 1] + phi[0][Nx - 2]) * lambda - phi[0][Nx - 1] * (2 * lambda);
+            laplace_phi[Ny - 1][0] = (phi[Ny - 1][1] + phi[Ny - 2][0]) * lambda - phi[Ny - 1][0] * (2 * lambda);
+            laplace_phi[Ny - 1][Nx - 1] = (phi[Ny - 1][Nx - 2] + phi[Ny - 2][Nx - 1]) * lambda - phi[Ny - 1][Nx - 1] * (2 * lambda);
 
 
-        print_now = print_current_data(step, laplace_phi, f, phi, error, Nx, Ny, method);
-        printf("Data was printed for Multigrid method");
+            //compute the norm
+            laplace_phi_minus_f_norm = 0;
+
+            for (j = 0; j < Ny; j++) {
+                for (i = 0; i < Nx; i++) {
+                    laplace_phi_minus_f_norm = laplace_phi_minus_f_norm + pow((laplace_phi[j][i] - f[j][i]), 2);
+                }
+            }
+
+            
+            laplace_phi_minus_f_norm = sqrt(laplace_phi_minus_f_norm);
 
 
+            if (f_norm == 0) {
+                RHS = epsilon;
+            }
+            else {
+                RHS = epsilon * f_norm;
+            }
+
+
+            //save the error here and break out of the loop if the max number of steps has been reached
+            error[step] = laplace_phi_minus_f_norm;
+
+            if (step == max_num_steps) {
+                break;
+            }
+
+
+            step += 1;
+
+        } while (laplace_phi_minus_f_norm > RHS);
     }
+
+    /* Impose condition that the integral over the domain is equal to zero */
+    integral = 0;
+    for (j = 0; j < Ny; j++) {
+        for (i = 0; i < Nx; i++) {
+            integral += phi[j][i] * D_x * D_y;
+        }
+    }
+
+    for (j = 0; j < Ny; j++) {
+        for (i = 0; i < Nx; i++) {
+            phi[j][i] = phi[j][i] - integral / (Nx * Ny);
+        }
+    }
+
+    print_now = print_current_data(step, laplace_phi, f, phi, error, Nx, Ny, method);
+    printf("Data was printed for Multigrid method\n");
 
 
 
@@ -1098,11 +1259,11 @@ int main() {
     /* ----------------------------------------------------------------------------------------------------------
     Freeing variables -------------------------------------------------------------------------------- */
 
-    for (i = 0; i < nx; i++) {
-        free(f[i]);
-        free(phi[i]);
-        free(phi_new[i]);
-        free(laplace_phi[i]);
+    for (j = 0; j < Ny; j++) {
+        free(f[j]);
+        free(phi[j]);
+        free(phi_new[j]);
+        free(laplace_phi[j]);
     }
 
     free(f);
@@ -1111,5 +1272,8 @@ int main() {
     free(laplace_phi);
     free(error);
 
-    
+    printf("end program\n");
+
+    return 0;
+
 }

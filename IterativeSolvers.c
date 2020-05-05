@@ -305,15 +305,104 @@ int MG_recursion(double** f, double** phi, int Nx, int Ny, double epsilon) {
         finished = GS_3step(f, phi, Nx, Ny, epsilon);
         printf("done\n");
 
-        /* Shrink phi */
-        for (j = 0; j < half_Ny; j++){
-            for(i = 0; i < half_Nx;  i++) {
+        /* Shrink phi & f by taking average of a point and its surounding 4 points and placing it into phi2 & f2 (adjusted for edges & corners) */
+        if (Nx > 2 && Ny > 2) { /* For phi & f sizes greater than 2x2 */
 
-                phi2[j][i] = phi[j * 2][i * 2];
-                f2[j][i] = f[j * 2][i * 2];
-            
+            /* For interior points */
+            for (j = 1; j < (half_Ny - 1); j++){
+                for(i = 1; i < (half_Nx - 1);  i++) {
+
+                    phi2[j][i] = (phi[j * 2][i * 2] + phi[j * 2][i * 2 + 1] + phi[j * 2 + 1][i * 2] + phi[j * 2][i * 2 - 1] + phi[j * 2 - 1][i * 2]) / 5;
+                    f2[j][i] = (f[j * 2][i * 2] + f[j * 2][i * 2 + 1] + f[j * 2 + 1][i * 2] + f[j * 2][i * 2 - 1] + f[j * 2 - 1][i * 2]) / 5;
+                
+                }
             }
+
+            /* For the left boundary */
+            for (j = 1; j < (half_Ny - 1); j++) {
+                i = 0;
+                phi2[j][i] = (phi[j * 2][i * 2] + phi[j * 2][i * 2 + 1] + phi[j * 2 + 1][i * 2] + phi[j * 2 - 1][i * 2]) / 4;
+                f2[j][i] = (f[j * 2][i * 2] + f[j * 2][i * 2 + 1] + f[j * 2 + 1][i * 2] + f[j * 2 - 1][i * 2]) / 4;
+
+            }
+
+            /* For the bottom boundary */
+            for (i = 1; j < (half_Nx - 1); j++) {
+                j = 0;
+                phi2[j][i] = (phi[j * 2][i * 2] + phi[j * 2 + 1][i * 2] + phi[j * 2][i * 2 + 1] + phi[j * 2][i * 2 - 1]) / 4;
+                f2[j][i] = (f[j * 2][i * 2] + f[j * 2 + 1][i * 2] + f[j * 2][i * 2 + 1] + f[j * 2][i * 2 - 1]) / 4;
+
+            }
+
+            /* ODD */
+            if (nx / half_nx != 2 && ny / half_ny != 2) { /* For odd-sized square meshes (7x7, 23x23, etc.) */
+                /* For the right boundary */
+                for (j = 1; j < (half_Ny - 1); j++) {
+                    i = half_Nx - 1;
+                    phi2[j][i] = (phi[j * 2][i * 2] + phi[j * 2][i * 2 + 1] + phi[j * 2 + 1][i * 2] + phi[j * 2 - 1][i * 2]) / 4;
+                    f2[j][i] = (f[j * 2][i * 2] + f[j * 2][i * 2 + 1] + f[j * 2 + 1][i * 2] + f[j * 2 - 1][i * 2]) / 4;
+
+                }
+
+                /* For the top boundary */
+                for (i = 1; j < (half_Nx - 1); j++) {
+                    j = half_Ny - 1;
+                    phi2[j][i] = (phi[j * 2][i * 2] + phi[j * 2 + 1][i * 2] + phi[j * 2][i * 2 + 1] + phi[j * 2][i * 2 - 1]) / 4;
+                    f2[j][i] = (f[j * 2][i * 2] + f[j * 2 + 1][i * 2] + f[j * 2][i * 2 + 1] + f[j * 2][i * 2 - 1]) / 4;
+
+                }
+
+                /* For the corners */
+                phi2[0][0] = (phi[0][0] + phi[0][1] + phi[1][0]) / 3; /* bottom left */
+                phi2[0][half_Nx - 1] = (phi[0][(half_Nx - 1) * 2] + phi[0][((half_Nx - 1) * 2) - 1] + phi[1][(half_Nx - 1) * 2]) / 3; /* bottom right */
+                phi2[half_Ny - 1][0] = (phi[(half_Ny - 1) * 2][0] + phi[((half_Ny - 1) * 2) - 1][0] + phi[(half_Ny - 1) * 2][1]) / 3; /* top left */
+                phi2[half_Ny - 1][half_Nx - 1] = (phi[(half_Ny - 1) * 2][(half_Nx - 1) * 2] +  + phi[(half_Ny - 1) * 2][(half_Nx - 1) * 2 - 1] + phi[(half_Ny - 1) * 2 - 1][(half_Nx - 1) * 2]) / 3; /* top right */
+                
+            }
+            /* EVEN */
+            else if (nx / half_nx == 2 && ny / half_ny == 2){ /* For even-sized square meshes (6x6, 24x24, etc.) */
+                 /* For the right boundary */
+                for (j = 1; j < (half_Ny - 1); j++) {
+                    i = half_Nx - 1;
+                    phi2[j][i] = (phi[j * 2][i * 2] + phi[j * 2][i * 2 + 1] + phi[j * 2 + 1][i * 2] + phi[j * 2][i * 2 - 1] + phi[j * 2 - 1][i * 2]) / 5;
+                    f2[j][i] = (f[j * 2][i * 2] + f[j * 2][i * 2 + 1] + f[j * 2 + 1][i * 2] + f[j * 2][i * 2 - 1] + f[j * 2 - 1][i * 2]) / 5;
+
+                }
+
+                /* For the top boundary */
+                for (i = 1; j < (half_Nx - 1); j++) {
+                    j = half_Ny - 1;
+                    phi2[j][i] = (phi[j * 2][i * 2] + phi[j * 2][i * 2 + 1] + phi[j * 2 + 1][i * 2] + phi[j * 2][i * 2 - 1] + phi[j * 2 - 1][i * 2]) / 5;
+                    f2[j][i] = (f[j * 2][i * 2] + f[j * 2][i * 2 + 1] + f[j * 2 + 1][i * 2] + f[j * 2][i * 2 - 1] + f[j * 2 - 1][i * 2]) / 5;
+                
+                }
+
+                /* For the corners */
+                phi2[0][0] = (phi[0][0] + phi[0][1] + phi[1][0]) / 3; /* bottom left */
+                phi2[0][half_Nx - 1] = (phi[0][(half_Nx - 1) * 2] + phi[0][((half_Nx - 1) * 2) + 1] + phi[0][((half_Nx - 1) * 2) - 1] + phi[1][(half_Nx - 1) * 2]) / 4; /* bottom right */
+                phi2[half_Ny - 1][0] = (phi[(half_Ny - 1) * 2][0] + phi[((half_Ny - 1) * 2) + 1][0] + phi[((half_Ny - 1) * 2) - 1][0] + phi[(half_Ny - 1) * 2][1]) / 4; /* top left */
+                phi2[half_Ny - 1][half_Nx - 1] = (phi[(half_Ny - 1) * 2][(half_Nx - 1) * 2] + phi[(half_Ny - 1) * 2][(half_Nx - 1) * 2 + 1] + phi[(half_Ny - 1) * 2 + 1][(half_Nx - 1) * 2] + phi[(half_Ny - 1) * 2][(half_Nx - 1) * 2 - 1] + phi[(half_Ny - 1) * 2 - 1][(half_Nx - 1) * 2]) / 5; /* top right */
+
+            }
+            else { /* Making sure the mesh is square, and terminating recursion otherwise (also frees memory) */
+                printf("\n\n YOU DID NOT INPUT A SQUARE MESH\n\n");
+
+                for (j = 0; j < half_Ny; j++) {
+                    free(phi2[j]);
+                    free(f2[j]);
+                }
+                free(phi2);
+                free(f2);                
+
+                return 0;
+            }
+
         }
+        else if (Nx == 2 && Ny == 2){ /* For phi & f sizes of 2x2 */
+            phi2[0][0] = (phi[0][0] + phi[0][1] + phi[1][0]) / 3;
+        }
+
+        /* phi & f sizes of 1x1 are not shrunk */
 
         
         if (Nx > 1 && Ny > 1) {
@@ -379,12 +468,12 @@ int main() {
     double f_norm;
     double lambda = pow(D_x, -2);
     double laplace_phi_minus_f_norm;
-    double epsilon = pow(10, -3);
+    double epsilon = pow(10, -7);
     double RHS;
     double integral;
     double sum;
 
-    double omega = 1.3;   /* SOR method variables */
+    double omega = 72;   /* SOR method variables */
     double phi_GS;
     double d_GS;
 

@@ -450,7 +450,7 @@ int main() {
     /* ----------------------------------------------------------------------------------------------------------
     Initializing variables -------------------------------------------------------------------------------- */
     
-    char method[] = "MG";      /* possible methods "PJ", "GS", "SOR", "CG", "MG" */
+    char method[] = "SOR";      /* possible methods "PJ", "GS", "SOR", "CG", "MG" */
 
     int i, j;
     int step = 1;
@@ -468,7 +468,7 @@ int main() {
     double f_norm;
     double lambda = pow(D_x, -2);
     double laplace_phi_minus_f_norm;
-    double epsilon = pow(10, -7);
+    double epsilon = pow(10, -3);
     double RHS;
     double integral;
     double sum;

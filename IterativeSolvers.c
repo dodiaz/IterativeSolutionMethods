@@ -93,10 +93,10 @@ int main() {
 
     int i, j;
     int step = 0;
-    int max_num_steps = 10000;   //Increase this number if the method isn't converging
+    int max_num_steps = 30000;   //Increase this number if the method isn't converging
 
-    int Nx = 11;
-    int Ny = 11;
+    int Nx = 64;
+    int Ny = 64;
     double nx = Nx;
     double ny = Ny;
     double D_x = 1 / nx;
@@ -107,12 +107,13 @@ int main() {
     double f_norm;
     double lambda = pow(D_x, -2);
     double laplace_phi_minus_f_norm;
-    double epsilon = pow(10, -3);
+    double epsilon = pow(10, -7);
     double RHS;
     double integral;
     double sum;
+    double max_error;
 
-    double omega = 1.3;   /* SOR method variables */
+    double omega = 1.94;   /* SOR method variables */
     double phi_GS;
     double d_GS;
 
@@ -296,7 +297,17 @@ int main() {
 
 
             //save the error here and break out of the loop if the max number of steps has been reached
-            error[step] = laplace_phi_minus_f_norm;
+            max_error = 0;
+            for (j = 0; j < Ny; j++) {
+                for (i = 0; i < Nx; i++) {
+                    if (fabs(laplace_phi[j][i] - f[j][i]) > max_error) {
+                        max_error = fabs(laplace_phi[j][i] - f[j][i]);
+                    }
+                }
+            }
+            error[step] = max_error;
+
+
 
             if (step == max_num_steps) {
                 break;
@@ -304,8 +315,8 @@ int main() {
 
             step += 1; 
 
-        } while (laplace_phi_minus_f_norm > RHS);
-
+        
+        } while (max_error > epsilon);       
 
         // Impose condition that the integral over the domain is equal to zero
         integral = 0;
@@ -450,7 +461,18 @@ int main() {
 
 
             //save the error here and break out of the loop if the max number of steps has been reached
-            error[step] = laplace_phi_minus_f_norm;
+            max_error = 0;
+            for (j = 0; j < Ny; j++) {
+                for (i = 0; i < Nx; i++) {
+                    if (fabs(laplace_phi[j][i] - f[j][i]) > max_error) {
+                        max_error = fabs(laplace_phi[j][i] - f[j][i]);
+                    }
+                }
+            }
+            error[step] = max_error;
+
+
+
 
             if (step == max_num_steps) {
                 break;
@@ -458,7 +480,7 @@ int main() {
 
             step += 1; 
 
-        } while (laplace_phi_minus_f_norm > RHS);
+        } while (max_error > epsilon);        
 
 
         // Impose condition that the integral over the domain is equal to zero
@@ -621,7 +643,18 @@ int main() {
 
 
             //save the error here and break out of the loop if the max number of steps has been reached
-            error[step] = laplace_phi_minus_f_norm;
+            max_error = 0;
+            for (j = 0; j < Ny; j++) {
+                for (i = 0; i < Nx; i++) {
+                    if (fabs(laplace_phi[j][i] - f[j][i]) > max_error) {
+                        max_error = fabs(laplace_phi[j][i] - f[j][i]);
+                    }
+                }
+            }
+            error[step] = max_error;
+
+
+
 
             if (step == max_num_steps) {
                 break;
@@ -629,7 +662,15 @@ int main() {
 
             step += 1; 
 
-        } while (laplace_phi_minus_f_norm > RHS);
+
+            if (isinf(max_error)) {
+                printf("Infinity value achieved in the laplace_phi array and data will not be printed. Try decreasing omega.");
+                return 0;
+            }
+
+
+
+        } while (max_error > epsilon);        
 
 
         // Impose condition that the integral over the domain is equal to zero
@@ -736,28 +777,6 @@ int main() {
             }
         }
 
-        /*  USED THIS TO PRINT A AND MAKE SURE IT LOOKS GOOD... AND IT LOOKS RIGHT
-        //print array to make sure it looks good
-        for (j = 0; j < Ny*Nx; j++) {
-            for (i = 1; i < Ny*Nx; i++) {
-                printf("%f ", A[j][i]);
-            }
-            printf(" \n");
-        }
-
-        //save A to text file to look at it
-        char filename1[] = "A_matrix.txt";
-
-        FILE* fpointer1 = fopen(filename1, "w");
-        for (j = 0; j < Nx*Ny; j++) {
-            for (i = 0; i < Nx*Ny; i++) {
-                fprintf(fpointer1, "%.20lf ", A[j][i]);
-            }
-            fprintf(fpointer1, "\n");
-        }
-        fclose(fpointer1);
-        */
-
 
         // Initialization
         for (i = 0; i < Nx*Ny; i++) {
@@ -780,7 +799,7 @@ int main() {
         do {
 
             error[step] = sqrt(rho[step]);
-            printf("Step %d has error %f \n", step, error[step]);
+            
             step += 1;
 
             if (step == 1) {
@@ -828,47 +847,71 @@ int main() {
             
             
 
-        } while ( sqrt(rho[step]) > epsilon * sqrt(rho[0]) );
+
+
+
+            /* following line are not part of the method, just used for plotting infinity norm of error */
+            for (j = 0; j < Ny; j++) {
+                for (i = 0; i < Nx; i++) {
+                    phi[j][i] = phi_vec[j*Nx + i];
+                }
+            }
+
+
+
+
+            //compute laplace_p matrix (ONLY NECESSARY FOR ERROR AND VISUALIZATION)
+            for (j = 1; j < Ny - 1; j++) {
+                for (i = 1; i < Nx - 1; i++) {
+                    laplace_phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j - 1][i] + phi[j + 1][i]) * lambda - 4 * lambda * phi[j][i];
+                }
+            }
+            for (j = 1; j < Ny - 1; j++) {
+                i = 0;
+                laplace_phi[j][i] = (phi[j][i + 1] + phi[j - 1][i] + phi[j + 1][i]) * lambda - phi[j][i] * (3 * lambda);
+            }
+            for (j = 1; j < Ny - 1; j++) {
+                i = Nx - 1;
+                laplace_phi[j][i] = (phi[j][i - 1] + phi[j - 1][i] + phi[j + 1][i]) * lambda - phi[j][i] * (3 * lambda);
+            }
+            for (i = 1; i < Nx - 1; i++) {
+                j = 0;
+                laplace_phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j + 1][i]) * lambda - phi[j][i] * (3 * lambda);
+            }
+            for (i = 1; i < Nx - 1; i++) {
+                j = Ny - 1;
+                laplace_phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j - 1][i]) * lambda - phi[j][i] * (3 * lambda);
+            }
+            laplace_phi[0][0] = (phi[1][0] + phi[0][1]) * lambda - phi[0][0] * (2 * lambda);
+            laplace_phi[0][Nx - 1] = (phi[1][Nx - 1] + phi[0][Nx - 2]) * lambda - phi[0][Nx - 1] * (2 * lambda);
+            laplace_phi[Ny - 1][0] = (phi[Ny - 1][1] + phi[Ny - 2][0]) * lambda - phi[Ny - 1][0] * (2 * lambda);
+            laplace_phi[Ny - 1][Nx - 1] = (phi[Ny - 1][Nx - 2] + phi[Ny - 2][Nx - 1]) * lambda - phi[Ny - 1][Nx - 1] * (2 * lambda);
+
+
+            //save the error here 
+            max_error = 0;
+            for (j = 0; j < Ny; j++) {
+                for (i = 0; i < Nx; i++) {
+                    if (fabs(laplace_phi[j][i] - f[j][i]) > max_error) {
+                        max_error = fabs(laplace_phi[j][i] - f[j][i]);
+                    }
+                }
+            }
+            error[step] = max_error;
+
+
+
+
+
+
+
+
+
+        } while (max_error > epsilon);        
         
 
 
-        for (j = 0; j < Ny; j++) {
-            for (i = 0; i < Nx; i++) {
-                phi[j][i] = phi_vec[j*Nx + i];
-            }
-        }
-
-        //print final error
-        error[step] = sqrt(rho[step]);
-
-
-        //compute laplace_p matrix (ONLY NECESSARY FOR VISUALIZATION)
-        for (j = 1; j < Ny - 1; j++) {
-            for (i = 1; i < Nx - 1; i++) {
-                laplace_phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j - 1][i] + phi[j + 1][i]) * lambda - 4 * lambda * phi[j][i];
-            }
-        }
-        for (j = 1; j < Ny - 1; j++) {
-            i = 0;
-            laplace_phi[j][i] = (phi[j][i + 1] + phi[j - 1][i] + phi[j + 1][i]) * lambda - phi[j][i] * (3 * lambda);
-        }
-        for (j = 1; j < Ny - 1; j++) {
-            i = Nx - 1;
-            laplace_phi[j][i] = (phi[j][i - 1] + phi[j - 1][i] + phi[j + 1][i]) * lambda - phi[j][i] * (3 * lambda);
-        }
-        for (i = 1; i < Nx - 1; i++) {
-            j = 0;
-            laplace_phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j + 1][i]) * lambda - phi[j][i] * (3 * lambda);
-        }
-        for (i = 1; i < Nx - 1; i++) {
-            j = Ny - 1;
-            laplace_phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j - 1][i]) * lambda - phi[j][i] * (3 * lambda);
-        }
-        laplace_phi[0][0] = (phi[1][0] + phi[0][1]) * lambda - phi[0][0] * (2 * lambda);
-        laplace_phi[0][Nx - 1] = (phi[1][Nx - 1] + phi[0][Nx - 2]) * lambda - phi[0][Nx - 1] * (2 * lambda);
-        laplace_phi[Ny - 1][0] = (phi[Ny - 1][1] + phi[Ny - 2][0]) * lambda - phi[Ny - 1][0] * (2 * lambda);
-        laplace_phi[Ny - 1][Nx - 1] = (phi[Ny - 1][Nx - 2] + phi[Ny - 2][Nx - 1]) * lambda - phi[Ny - 1][Nx - 1] * (2 * lambda);
-
+        
 
 
         // Impose condition that the integral over the domain is equal to zero

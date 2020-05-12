@@ -301,7 +301,7 @@ int MG_recursion(double** f, double** phi, int Nx, int Ny, double epsilon, int n
     
     for (i = 0; i < Nx; i++) {
         residual[i] = (double*)calloc(Nx, sizeof(double));
-        error = (double*)calloc(Nx, sizeof(double));
+        error = (double**)calloc(Nx, sizeof(double));
         laplace_phi[i] = (double*)calloc(Nx, sizeof(double));
     }
     for (i = 0; i < half_Nx; i++) {
@@ -454,6 +454,15 @@ int MG_recursion(double** f, double** phi, int Nx, int Ny, double epsilon, int n
         residual2[0][0] = (residual[0][0] + residual[0][1] + residual[1][0]) / 3;
     }
     /* residual size of 1x1 is not restricted */
+
+
+    /* Printing = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = */
+    for (j = 0; j < Ny; j++) {
+        for (i = 0; i < Nx; i++) {
+            printf("%f,  ", phi[j][i]);
+        }
+        printf("\n");
+    }
 
 
 
@@ -1347,6 +1356,7 @@ int main() {
             printf("Iteration step %d\n", step);
 
             /* ------- RECURSION ------- */
+            printf("Enter MG_recursion: %dx%d\n", Nx, Ny);
             MG_recursion(f, phi, Nx, Ny, epsilon, nGS);
             
             /* compute laplace_p matrix */
@@ -1411,6 +1421,8 @@ int main() {
 
         } while (laplace_phi_minus_f_norm > RHS);
     }
+    
+    printf("Exit iteration: %dx%d\n", Nx, Ny);
 
     /* Impose condition that the integral over the domain is equal to zero */
     integral = 0;

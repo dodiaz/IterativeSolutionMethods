@@ -275,8 +275,6 @@ int GS_nstep(double** f, double** phi, int Nx, int Ny, double epsilon, int nGS) 
 
 int MG_recursion(double** f, double** phi, int Nx, int Ny, double epsilon, int nGS) {
 
-    printf("Start MG_recursion: %dx%d\n", Nx, Ny);
-
     /* Initializing variables */
     int finished;
     int i, j;
@@ -297,16 +295,18 @@ int MG_recursion(double** f, double** phi, int Nx, int Ny, double epsilon, int n
 
     double** residual = (double**)calloc(Ny, sizeof(double*));
     double** residual2 = (double**)calloc(half_Ny, sizeof(double*));
-    double** error = (double**)calloc(half_Ny, sizeof(double*));
+    double** error = (double**)calloc(Ny, sizeof(double*));
+    double** error2 = (double**)calloc(half_Ny, sizeof(double*));
     double** laplace_phi = (double**)calloc(Ny, sizeof(double*));
     
     for (i = 0; i < Nx; i++) {
         residual[i] = (double*)calloc(Nx, sizeof(double));
+        error = (double*)calloc(Nx, sizeof(double));
         laplace_phi[i] = (double*)calloc(Nx, sizeof(double));
     }
     for (i = 0; i < half_Nx; i++) {
         residual2[i] = (double*)calloc(half_Nx, sizeof(double));
-        error[i] = (double*)calloc(half_Nx, sizeof(double));
+        error2[i] = (double*)calloc(half_Nx, sizeof(double));
     }
     
     /* ================================================================================================*/
@@ -315,44 +315,49 @@ int MG_recursion(double** f, double** phi, int Nx, int Ny, double epsilon, int n
     
     /* ------- GETTING RESIDUAL ------- NEED TO TAKE INTO ACCOUNT SIZES SMALLER THAN 3x3 */
     /* compute laplace_p matrix */
-    for (j = 1; j < Ny - 1; j++) {
+    if (Nx > 1 && Ny > 1) {
+        for (j = 1; j < Ny - 1; j++) {
+            for (i = 1; i < Nx - 1; i++) {
+                laplace_phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j - 1][i] + phi[j + 1][i]) * lambda - 4 * lambda * phi[j][i];
+            }
+        }
+        for (j = 1; j < Ny - 1; j++) {
+            i = 0;
+            laplace_phi[j][i] = (phi[j][i + 1] + phi[j - 1][i] + phi[j + 1][i]) * lambda - phi[j][i] * (3 * lambda);
+        }
+        for (j = 1; j < Ny - 1; j++) {
+            i = Nx - 1;
+            laplace_phi[j][i] = (phi[j][i - 1] + phi[j - 1][i] + phi[j + 1][i]) * lambda - phi[j][i] * (3 * lambda);
+        }
         for (i = 1; i < Nx - 1; i++) {
-            laplace_phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j - 1][i] + phi[j + 1][i]) * lambda - 4 * lambda * phi[j][i];
+            j = 0;
+            laplace_phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j + 1][i]) * lambda - phi[j][i] * (3 * lambda);
+        }
+        for (i = 1; i < Nx - 1; i++) {
+            j = Ny - 1;
+            laplace_phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j - 1][i]) * lambda - phi[j][i] * (3 * lambda);
+        }
+
+        laplace_phi[0][0] = (phi[1][0] + phi[0][1]) * lambda - phi[0][0] * (2 * lambda);
+        laplace_phi[0][Nx - 1] = (phi[1][Nx - 1] + phi[0][Nx - 2]) * lambda - phi[0][Nx - 1] * (2 * lambda);
+        laplace_phi[Ny - 1][0] = (phi[Ny - 1][1] + phi[Ny - 2][0]) * lambda - phi[Ny - 1][0] * (2 * lambda);
+        laplace_phi[Ny - 1][Nx - 1] = (phi[Ny - 1][Nx - 2] + phi[Ny - 2][Nx - 1]) * lambda - phi[Ny - 1][Nx - 1] * (2 * lambda);
+
+        for (j = 0; j < Ny; j++) {
+            for (i = 0; i < Nx; i++) {
+                residual[j][i] = f[j][i] - laplace_phi[j][i];
+
+            }
         }
     }
-    for (j = 1; j < Ny - 1; j++) {
-        i = 0;
-        laplace_phi[j][i] = (phi[j][i + 1] + phi[j - 1][i] + phi[j + 1][i]) * lambda - phi[j][i] * (3 * lambda);
-    }
-    for (j = 1; j < Ny - 1; j++) {
-        i = Nx - 1;
-        laplace_phi[j][i] = (phi[j][i - 1] + phi[j - 1][i] + phi[j + 1][i]) * lambda - phi[j][i] * (3 * lambda);
-    }
-    for (i = 1; i < Nx - 1; i++) {
-        j = 0;
-        laplace_phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j + 1][i]) * lambda - phi[j][i] * (3 * lambda);
-    }
-    for (i = 1; i < Nx - 1; i++) {
-        j = Ny - 1;
-        laplace_phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j - 1][i]) * lambda - phi[j][i] * (3 * lambda);
-    }
 
-    laplace_phi[0][0] = (phi[1][0] + phi[0][1]) * lambda - phi[0][0] * (2 * lambda);
-    laplace_phi[0][Nx - 1] = (phi[1][Nx - 1] + phi[0][Nx - 2]) * lambda - phi[0][Nx - 1] * (2 * lambda);
-    laplace_phi[Ny - 1][0] = (phi[Ny - 1][1] + phi[Ny - 2][0]) * lambda - phi[Ny - 1][0] * (2 * lambda);
-    laplace_phi[Ny - 1][Nx - 1] = (phi[Ny - 1][Nx - 2] + phi[Ny - 2][Nx - 1]) * lambda - phi[Ny - 1][Nx - 1] * (2 * lambda);
-
-    for (j = 0; j < Ny; j++) {
-        for (i = 0; i < Nx; i++) {
-            residual[j][i] = f[j][i] - laplace_phi[j][i];
-
-        }
-    }
+    
 
     /* ------- RESTRICTION ------- */
     /* Restricting residual by taking average of a point and its surounding 4 points and placing it into residual2 (adjusted for edges & corners) */
     if (Nx > 2 && Ny > 2) { /* For residual sizes greater than 2x2 */
 
+        printf("resricting residual\n");
         /* For interior points */
         for (j = 1; j < (half_Ny - 1); j++){
             for(i = 1; i < (half_Nx - 1);  i++) {
@@ -427,15 +432,17 @@ int MG_recursion(double** f, double** phi, int Nx, int Ny, double epsilon, int n
 
             for (j = 0; j < Ny; j++) {
                 free(residual[j]);
+                free(error[j]);
                 free(laplace_phi[j]);
             }
             for (j = 0; j < half_Ny; j++) {
                 free(residual2[j]);
-                free(error[j]);
+                free(error2[j]);
             }
             free(residual);
             free(residual2);
             free(error);
+            free(error2);
             free(laplace_phi);                
 
             return 0;
@@ -443,48 +450,67 @@ int MG_recursion(double** f, double** phi, int Nx, int Ny, double epsilon, int n
 
     }
     else if (Nx == 2 && Ny == 2){ /* For phi & f sizes of 2x2 */
+        printf("resricting residual\n");
         residual2[0][0] = (residual[0][0] + residual[0][1] + residual[1][0]) / 3;
     }
+    /* residual size of 1x1 is not restricted */
 
-    /* phi & f sizes of 1x1 are not restricted */
 
 
     /* ------- RELAXATION ON error ------- */
-    GS_nstep(residual2, error, half_Nx, half_Ny, epsilon, nGS);
+    printf("relaxing error\n");
+    GS_nstep(residual2, error2, half_Nx, half_Ny, epsilon, nGS);
+
 
     /* ------- RECURSION ------- */
     if (half_Nx > 1 && half_Ny > 1) {
-        MG_recursion(residual2, error, half_Nx, half_Ny, epsilon, nGS);
+        
+        printf("Enter MG_recursion: %dx%d\n", half_Nx, half_Ny);
+        MG_recursion(residual2, error2, half_Nx, half_Ny, epsilon, nGS);
     }
 
+    printf("prolonging error\n");
     
-    /* Merge phi */
+    /* Prolong error */
     for (j = 0; j < Ny; j += 2){
         for(i = 0; i < Nx; i += 2) {
+            printf("(j, i) = (%d, %d)\n", j, i);
+            error[j][i] = error2[j / 2][i / 2];
+            printf("check\n");
+        }
+    }
 
-            phi[j][i] = phi2[j / 2][i / 2];
+    printf("correcting phi\n");
+
+    /* Correct phi using error */
+    for (j = 0; j < Ny; j += 1){
+        for(i = 0; i < Nx; i += 1) {
+
+            phi[j][i] = phi[j][i] + error2[j][i];
 
         }
     }
 
     /* Exit GS solving */
-    printf("2nd GS_3step\n");
+    printf("relaxing phi\n");
     finished = GS_nstep(f, phi, Nx, Ny, epsilon, nGS);
-    printf("done\n");
 
 
-    for (j = 0; j < half_Ny; j++) {
+    for (j = 0; j < Ny; j++) {
         free(residual[j]);
-        free(residual2[j]);
         free(error[j]);
         free(laplace_phi[j]);
+    }
+    for (j = 0; j < half_Ny; j++) {
+        free(residual2[j]);
+        free(error2[j]);
     }
     free(residual);
     free(residual2);
     free(error);
-    free(laplace_phi);
+    free(error2);
+    free(laplace_phi);  
 
-    
     printf("Exit MG_recursion: %dx%d\n", Nx, Ny);    
 
     return 0;
@@ -523,7 +549,7 @@ int main() {
     double f_norm;
     double lambda = pow(D_x, -2);
     double laplace_phi_minus_f_norm;
-    double epsilon = pow(10, -3);
+    double epsilon = pow(10, -5);
     double RHS;
     double integral;
     double sum;

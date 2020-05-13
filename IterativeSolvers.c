@@ -228,8 +228,6 @@ int GS_nstep(double** f, double** phi, int Nx, int Ny, double epsilon, int nGS) 
 
 
             /* break out of the loop if the max number of steps has been reached */
-            printf("\tstep %d\n", step);
-
             if (step == max_num_steps) {
                 break;
             }
@@ -262,8 +260,6 @@ int GS_nstep(double** f, double** phi, int Nx, int Ny, double epsilon, int nGS) 
 
     free(laplace_phi);
 
-    printf("\tGS done\n");
-
     return 0;
 
 }
@@ -281,8 +277,8 @@ int MG_recursion(double** f, double** phi, int Nx, int Ny, double epsilon, int n
 
     double nx = Nx;
     double ny = Ny;
-    double D_x = 1 / Nx;
-    double D_y = 1 / Ny;
+    double D_x = 1 / nx;
+    double D_y = 1 / ny;
     double lambda = pow(D_x, -2);
 
     double half_nx = ceil(nx / 2);
@@ -301,7 +297,7 @@ int MG_recursion(double** f, double** phi, int Nx, int Ny, double epsilon, int n
     
     for (i = 0; i < Nx; i++) {
         residual[i] = (double*)calloc(Nx, sizeof(double));
-        error = (double**)calloc(Nx, sizeof(double));
+        error[i] = (double*)calloc(Nx, sizeof(double));
         laplace_phi[i] = (double*)calloc(Nx, sizeof(double));
     }
     for (i = 0; i < half_Nx; i++) {
@@ -310,10 +306,8 @@ int MG_recursion(double** f, double** phi, int Nx, int Ny, double epsilon, int n
     }
     
     /* ================================================================================================*/
-
-    printf("getting residual\n");
     
-    /* ------- GETTING RESIDUAL ------- NEED TO TAKE INTO ACCOUNT SIZES SMALLER THAN 3x3 */
+    /* ------- GETTING RESIDUAL ------- */
     /* compute laplace_p matrix */
     if (Nx > 1 && Ny > 1) {
         for (j = 1; j < Ny - 1; j++) {
@@ -357,7 +351,6 @@ int MG_recursion(double** f, double** phi, int Nx, int Ny, double epsilon, int n
     /* Restricting residual by taking average of a point and its surounding 4 points and placing it into residual2 (adjusted for edges & corners) */
     if (Nx > 2 && Ny > 2) { /* For residual sizes greater than 2x2 */
 
-        printf("resricting residual\n");
         /* For interior points */
         for (j = 1; j < (half_Ny - 1); j++){
             for(i = 1; i < (half_Nx - 1);  i++) {
@@ -450,58 +443,55 @@ int MG_recursion(double** f, double** phi, int Nx, int Ny, double epsilon, int n
 
     }
     else if (Nx == 2 && Ny == 2){ /* For phi & f sizes of 2x2 */
-        printf("resricting residual\n");
         residual2[0][0] = (residual[0][0] + residual[0][1] + residual[1][0]) / 3;
     }
     /* residual size of 1x1 is not restricted */
 
 
-    /* Printing = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = */
+    /* ------- RELAXATION ON error ------- */
+    GS_nstep(residual2, error2, half_Nx, half_Ny, epsilon, nGS);
+
+
+    /* Printing = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
     for (j = 0; j < Ny; j++) {
         for (i = 0; i < Nx; i++) {
-            printf("%f,  ", phi[j][i]);
+            printf("%f,  ", error[j][i]);
         }
         printf("\n");
-    }
-
-
-
-    /* ------- RELAXATION ON error ------- */
-    printf("relaxing error\n");
-    GS_nstep(residual2, error2, half_Nx, half_Ny, epsilon, nGS);
+    } */
 
 
     /* ------- RECURSION ------- */
     if (half_Nx > 1 && half_Ny > 1) {
-        
-        printf("Enter MG_recursion: %dx%d\n", half_Nx, half_Ny);
         MG_recursion(residual2, error2, half_Nx, half_Ny, epsilon, nGS);
     }
 
-    printf("prolonging error\n");
     
     /* Prolong error */
     for (j = 0; j < Ny; j += 2){
         for(i = 0; i < Nx; i += 2) {
-            printf("(j, i) = (%d, %d)\n", j, i);
             error[j][i] = error2[j / 2][i / 2];
-            printf("check\n");
         }
     }
 
-    printf("correcting phi\n");
+    /* Printing = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+    for (j = 0; j < Ny; j++) {
+        for (i = 0; i < Nx; i++) {
+            printf("%f,  ", error[j][i]);
+        }
+        printf("\n");
+    } */
 
     /* Correct phi using error */
-    for (j = 0; j < Ny; j += 1){
-        for(i = 0; i < Nx; i += 1) {
+    for (j = 0; j < Ny; j++){
+        for(i = 0; i < Nx; i++) {
 
-            phi[j][i] = phi[j][i] + error2[j][i];
+            phi[j][i] += error[j][i];
 
         }
     }
 
     /* Exit GS solving */
-    printf("relaxing phi\n");
     finished = GS_nstep(f, phi, Nx, Ny, epsilon, nGS);
 
 
@@ -519,8 +509,6 @@ int MG_recursion(double** f, double** phi, int Nx, int Ny, double epsilon, int n
     free(error);
     free(error2);
     free(laplace_phi);  
-
-    printf("Exit MG_recursion: %dx%d\n", Nx, Ny);    
 
     return 0;
 }
@@ -546,8 +534,8 @@ int main() {
     int step = 1;
     int max_num_steps = 2000;   /* Increase this number if the method isn't converging */
 
-    int Nx = 12;
-    int Ny = 12;
+    int Nx = 32;
+    int Ny = 32;
     double nx = Nx;
     double ny = Ny;
     double D_x = 1 / nx;
@@ -563,7 +551,7 @@ int main() {
     double integral;
     double sum;
 
-    double omega = 72;   /* SOR method variables */
+    double omega = 1.7;   /* SOR method variables */
     double phi_GS;
     double d_GS;
 
@@ -1346,17 +1334,14 @@ int main() {
 
     if ( strcmp(method, "MG") == 0 ) {
 
-        printf("Start MG method\n");
 
         /* ------- RELAXATION ON phi ------- */
         GS_nstep(f, phi, Nx, Ny, epsilon, nGS);
 
         do {
             
-            printf("Iteration step %d\n", step);
 
             /* ------- RECURSION ------- */
-            printf("Enter MG_recursion: %dx%d\n", Nx, Ny);
             MG_recursion(f, phi, Nx, Ny, epsilon, nGS);
             
             /* compute laplace_p matrix */
@@ -1412,6 +1397,17 @@ int main() {
             //save the error here and break out of the loop if the max number of steps has been reached
             error[step] = laplace_phi_minus_f_norm;
 
+            /* Printing = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = */
+            
+            printf("step %d\n", step);
+            for (j = 0; j < Ny; j++) {
+                for (i = 0; i < Nx; i++) {
+                    printf("%f,  ", laplace_phi[j][i]);
+                }
+                printf("\n");
+            }
+            printf("\n\n\n");
+
             if (step == max_num_steps) {
                 break;
             }
@@ -1420,28 +1416,26 @@ int main() {
             step += 1;
 
         } while (laplace_phi_minus_f_norm > RHS);
-    }
     
-    printf("Exit iteration: %dx%d\n", Nx, Ny);
-
-    /* Impose condition that the integral over the domain is equal to zero */
-    integral = 0;
-    for (j = 0; j < Ny; j++) {
-        for (i = 0; i < Nx; i++) {
-            integral += phi[j][i] * D_x * D_y;
+    
+        /* Impose condition that the integral over the domain is equal to zero */
+        integral = 0;
+        for (j = 0; j < Ny; j++) {
+            for (i = 0; i < Nx; i++) {
+                integral += phi[j][i] * D_x * D_y;
+            }
         }
-    }
 
-    for (j = 0; j < Ny; j++) {
-        for (i = 0; i < Nx; i++) {
-            phi[j][i] = phi[j][i] - integral / (Nx * Ny);
+        for (j = 0; j < Ny; j++) {
+            for (i = 0; i < Nx; i++) {
+                phi[j][i] = phi[j][i] - integral / (Nx * Ny);
+            }
         }
+
+        print_now = print_current_data(step, laplace_phi, f, phi, error, Nx, Ny, method);
+        printf("Data was printed for Multigrid method\n");
+
     }
-
-    print_now = print_current_data(step, laplace_phi, f, phi, error, Nx, Ny, method);
-    printf("Data was printed for Multigrid method\n");
-
-
 
 
     /* ----------------------------------------------------------------------------------------------------------
@@ -1460,7 +1454,6 @@ int main() {
     free(laplace_phi);
     free(error);
 
-    printf("end program\n");
 
     return 0;
 

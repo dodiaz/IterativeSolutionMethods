@@ -467,11 +467,47 @@ int MG_recursion(double** f, double** phi, int Nx, int Ny, double epsilon, int n
     }
 
     
-    /* Prolong error */
-    for (j = 0; j < Ny; j += 2){
-        for(i = 0; i < Nx; i += 2) {
-            error[j][i] = error2[j / 2][i / 2];
+    /* ------- PROLONGATION OF ERROR ------- */
+    /* EVEN */
+    if (nx / half_nx == 2 && ny / half_ny == 2){ /* For even-sized square meshes (6x6, 24x24, etc.) */
+        for (j = 0; j < half_Ny; j++){
+            for(i = 0; i < half_Nx; i++) {
+                error[j * 2][i * 2] = error2[j][i];
+                error[j * 2 + 1][i * 2] = error2[j][i];
+                error[j * 2][i * 2 + 1] = error2[j][i];
+                error[j * 2 + 1][i * 2 + 1] = error2[j][i];
+            }
         }
+    }
+    /* ODD */
+    else { /* For odd-sized square meshes (7x7, 23x23, etc.) */
+        /* interior points */
+        for (j = 0; j < half_Ny - 1; j++){
+            for(i = 0; i < half_Nx - 1; i++) {
+                error[j * 2][i * 2] = error2[j][i];
+                error[j * 2 + 1][i * 2] = error2[j][i];
+                error[j * 2][i * 2 + 1] = error2[j][i];
+                error[j * 2 + 1][i * 2 + 1] = error2[j][i];
+            }
+        }
+        
+        /* edges */
+        /* right edge */
+        for (j = 0; j < half_Ny - 1; j++) {
+            i = half_Nx - 1;
+            error[j * 2][i * 2] = error2[j][i];
+            error[j * 2 + 1][i * 2] = error2[j][i];
+        }
+
+        /* top edge */
+        for (i = 0; i < half_Nx - 1; i++) {
+            j = half_Ny - 1;
+            error[j * 2][i * 2] = error2[j][i];
+            error[j * 2][i * 2 + 1] = error2[j][i];
+        }
+
+        /* top-right corner */
+        error[Ny - 1][Nx - 1] = error2[half_Ny - 1][half_Nx - 1];
     }
 
     /* Printing = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
@@ -482,7 +518,7 @@ int MG_recursion(double** f, double** phi, int Nx, int Ny, double epsilon, int n
         printf("\n");
     } */
 
-    /* Correct phi using error */
+    /* ------- CORRECTION ------- */
     for (j = 0; j < Ny; j++){
         for(i = 0; i < Nx; i++) {
 
@@ -528,14 +564,14 @@ int main() {
     /* ----------------------------------------------------------------------------------------------------------
     Initializing variables -------------------------------------------------------------------------------- */
     
-    char method[] = "MG";      /* possible methods "PJ", "GS", "SOR", "CG", "MG" */
+    char method[] = "SOR";      /* possible methods "PJ", "GS", "SOR", "CG", "MG" */
 
     int i, j;
     int step = 1;
     int max_num_steps = 2000;   /* Increase this number if the method isn't converging */
 
-    int Nx = 32;
-    int Ny = 32;
+    int Nx = 64;
+    int Ny = 64;
     double nx = Nx;
     double ny = Ny;
     double D_x = 1 / nx;
@@ -546,18 +582,19 @@ int main() {
     double f_norm;
     double lambda = pow(D_x, -2);
     double laplace_phi_minus_f_norm;
-    double epsilon = pow(10, -5);
+    double epsilon = pow(10, -7);
     double RHS;
     double integral;
     double sum;
 
-    double omega = 1.7;   /* SOR method variables */
+    double omega = 1.0;   /* SOR method variables */
     double phi_GS;
     double d_GS;
 
     int print_now;
 
     int finished;   /* MG method variables */
+    double epsilon2 = epsilon * pow(10, -2);
     int nGS = 7;
 
 
@@ -925,6 +962,8 @@ int main() {
     Successive over-relaxation method -------------------------------------------------------------------------------- */
 
     if ( strcmp(method, "SOR") == 0 ) {
+
+        clock_t time_start = clock();
         
         f_norm = 0; /* compute f_norm */
         for (j = 0; j < Ny; j++) {
@@ -1083,6 +1122,10 @@ int main() {
                 phi[j][i] = phi[j][i] - integral / (Nx * Ny);
             }
         }
+
+        clock_t time_end = clock();
+        double run_time = (double)(time_end - time_start) / CLOCKS_PER_SEC;
+        printf("run time = %f\n", run_time);
 
         print_now = print_current_data(step, laplace_phi, f, phi, error, Nx, Ny, method);
         printf("Data was printed for Successive over-relaxation method");
@@ -1334,6 +1377,7 @@ int main() {
 
     if ( strcmp(method, "MG") == 0 ) {
 
+        clock_t time_start = clock();
 
         /* ------- RELAXATION ON phi ------- */
         GS_nstep(f, phi, Nx, Ny, epsilon, nGS);
@@ -1342,7 +1386,7 @@ int main() {
             
 
             /* ------- RECURSION ------- */
-            MG_recursion(f, phi, Nx, Ny, epsilon, nGS);
+            MG_recursion(f, phi, Nx, Ny, epsilon2, nGS);
             
             /* compute laplace_p matrix */
             for (j = 1; j < Ny - 1; j++) {
@@ -1397,8 +1441,7 @@ int main() {
             //save the error here and break out of the loop if the max number of steps has been reached
             error[step] = laplace_phi_minus_f_norm;
 
-            /* Printing = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = */
-            
+            /* Printing = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
             printf("step %d\n", step);
             for (j = 0; j < Ny; j++) {
                 for (i = 0; i < Nx; i++) {
@@ -1406,7 +1449,7 @@ int main() {
                 }
                 printf("\n");
             }
-            printf("\n\n\n");
+            printf("\n\n\n"); */
 
             if (step == max_num_steps) {
                 break;
@@ -1431,6 +1474,10 @@ int main() {
                 phi[j][i] = phi[j][i] - integral / (Nx * Ny);
             }
         }
+
+        clock_t time_end = clock();
+        double run_time = (double)(time_end - time_start) / CLOCKS_PER_SEC;
+        printf("run time = %f\n", run_time);
 
         print_now = print_current_data(step, laplace_phi, f, phi, error, Nx, Ny, method);
         printf("Data was printed for Multigrid method\n");

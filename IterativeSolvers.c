@@ -599,22 +599,6 @@ int main() {
     int nGS = 7;
 
 
-    // The following variables are used in conjugate gradient method
-    double** A = (double**)calloc(ny*nx, sizeof(double*));
-    for (i = 0; i <nx*ny; i++) {
-        A[i] = (double*)calloc(nx*ny, sizeof(double));
-    }
-
-    double* phi_vec = (double*)calloc(nx*ny, sizeof(double));
-    double* f_vec = (double*)calloc(nx*ny, sizeof(double));
-    double* r = (double*)calloc(nx*ny, sizeof(double));
-    double* d = (double*)calloc(nx*ny, sizeof(double));
-    double* epsilon_vec = (double*)calloc(nx*ny, sizeof(double));
-    double* rho = (double*)calloc(max_num_steps, sizeof(double));
-
-    double beta;
-    double alpha;
-
     
     /* ----------------------------------------------------------------------------------------------------
     Initializing arrays -------------------------------------------------------------------------------- */

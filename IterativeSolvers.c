@@ -564,14 +564,14 @@ int main() {
     /* ----------------------------------------------------------------------------------------------------------
     Initializing variables -------------------------------------------------------------------------------- */
     
-    char method[] = "SOR";      /* possible methods "PJ", "GS", "SOR", "CG", "MG" */
+    char method[] = "MG";      /* possible methods "PJ", "GS", "SOR", "CG", "MG" */
 
     int i, j;
     int step = 1;
     int max_num_steps = 30000;   /* Increase this number if the method isn't converging */
 
-    int Nx = 200;
-    int Ny = 200;
+    int Nx = 64;
+    int Ny = 64;
     double nx = Nx;
     double ny = Ny;
     double D_x = 1 / nx;

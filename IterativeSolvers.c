@@ -1462,7 +1462,7 @@ int main() {
 
         for (j = 0; j < Ny; j++) {
             for (i = 0; i < Nx; i++) {
-                phi[j][i] = phi[j][i] - integral / (Nx * Ny);
+                phi[j][i] = phi[j][i] - integral / (nx * ny);
             }
         }
 

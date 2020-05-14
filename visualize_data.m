@@ -4,23 +4,23 @@ close all
 
 A = load('A_matrix.txt');
 
-f1 = load('step11957_GS_phi_data.txt');
-f2 = load('step21098_PJ_phi_data.txt');
-f3 = load('step287_SOR_phi_data.txt');
-f4 = load('step34_MG_phi_data.txt');
-f5 = load('step113_CG_phi_data.txt');
+phi1 = load('step11957_GS_phi_data.txt');
+phi2 = load('step23887_PJ_phi_data.txt');
+phi3 = load('step283_SOR_phi_data.txt');
+phi4 = load('step34_MG_phi_data.txt');
+phi5 = load('step113_CG_phi_data.txt');
 
-f1 = f1/64/64;
-f2 = f2/64/64;
-f3 = f3/64/64;
-f4 = f4/64/64;
-f5 = f5/64/64;
+phi1 = phi1/64/64;
+phi2 = phi2/64/64;
+phi3 = phi3/64/64;
+phi4 = phi4/64/64;
+phi5 = phi5/64/64;
 
-sum1 = sum(f1,'all');
-sum2 = sum(f2,'all');
-sum3 = sum(f3,'all');
-sum4 = sum(f4,'all');
-sum5 = sum(f5,'all');
+sum1 = sum(phi1,'all');
+sum2 = sum(phi2,'all');
+sum3 = sum(phi3,'all');
+sum4 = sum(phi4,'all');
+sum5 = sum(phi5,'all');
 
 
 

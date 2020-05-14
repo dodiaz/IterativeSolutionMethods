@@ -588,11 +588,7 @@ int main() {
     double sum;
     double max_error;
 
-<<<<<<< HEAD
-    double omega = 1.94;   /* SOR method variables */
-=======
     double omega = 1.9361;   /* SOR method variables -- Optimized omege = 1.9361  */
->>>>>>> 6796cbb7524fdcc679e7c7c33a363447082812a6
     double phi_GS;
     double d_GS;
 

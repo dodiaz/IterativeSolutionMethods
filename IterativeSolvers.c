@@ -112,7 +112,7 @@ int main() {
     double integral;
     double sum;
 
-    double omega = 1.3;   /* SOR method variables */
+    double omega = 1.9361;   /* SOR method variables */
     double phi_GS;
     double d_GS;
 

@@ -4,11 +4,11 @@ close all
 
 A = load('A_matrix.txt');
 
-f1 = load('step11142_GS_phi_data.txt');
+f1 = load('step11957_GS_phi_data.txt');
 f2 = load('step21098_PJ_phi_data.txt');
 f3 = load('step287_SOR_phi_data.txt');
 f4 = load('step34_MG_phi_data.txt');
-f5 = load('step3_CG_phi_data.txt');
+f5 = load('step113_CG_phi_data.txt');
 
 f1 = f1/64/64;
 f2 = f2/64/64;
@@ -23,9 +23,6 @@ sum4 = sum(f4,'all');
 sum5 = sum(f5,'all');
 
 
-%% Did something get messed up?
-
-data = load('step17_CG_phi_data.txt');
 
 
 

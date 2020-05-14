@@ -265,7 +265,7 @@ int GS_nstep(double** f, double** phi, int Nx, int Ny, double epsilon, int nGS) 
 }
 
 /* ====================================================================================================================
-=================================== MG_recusion =======================================================================
+=================================== MG_recursion ======================================================================
 ==================================================================================================================== */
 
 
@@ -568,10 +568,10 @@ int main() {
 
     int i, j;
     int step = 1;
-    int max_num_steps = 2000;   /* Increase this number if the method isn't converging */
+    int max_num_steps = 30000;   /* Increase this number if the method isn't converging */
 
-    int Nx = 64;
-    int Ny = 64;
+    int Nx = 200;
+    int Ny = 200;
     double nx = Nx;
     double ny = Ny;
     double D_x = 1 / nx;
@@ -586,8 +586,9 @@ int main() {
     double RHS;
     double integral;
     double sum;
+    double max_error;
 
-    double omega = 1.0;   /* SOR method variables */
+    double omega = 1.9361;   /* SOR method variables -- Optimized omege = 1.9361  */
     double phi_GS;
     double d_GS;
 
@@ -650,8 +651,11 @@ int main() {
     /* ----------------------------------------------------------------------------------------------------------
     Point Jacobi method -------------------------------------------------------------------------------- */
 
+
     if ( strcmp(method, "PJ") == 0 ) {
 
+        clock_t time_start = clock();
+        
         f_norm = 0; /* compute f_norm */
         for (j = 0; j < Ny; j++) {
             for (i = 0; i < Nx; i++) {
@@ -796,6 +800,10 @@ int main() {
             }
         }
 
+        clock_t time_end = clock();
+        double run_time = (double)(time_end - time_start) / CLOCKS_PER_SEC;
+        printf("run time = %f\n", run_time);
+
         print_now = print_current_data(step, laplace_phi, f, phi, error, Nx, Ny, method);
         printf("Data was printed for Point Jacobi method");
 
@@ -814,6 +822,7 @@ int main() {
 
     if ( strcmp(method, "GS") == 0 ) {
         
+        clock_t time_start = clock();
         
         f_norm = 0; /* compute f_norm */
         for (j = 0; j < Ny; j++) {
@@ -949,6 +958,10 @@ int main() {
                 phi[j][i] = phi[j][i] - integral / (Nx * Ny);
             }
         }
+
+        clock_t time_end = clock();
+        double run_time = (double)(time_end - time_start) / CLOCKS_PER_SEC;
+        printf("run time = %f\n", run_time);
 
         print_now = print_current_data(step, laplace_phi, f, phi, error, Nx, Ny, method);
         printf("Data was printed for Gauss-Seidel method");
@@ -1139,6 +1152,8 @@ int main() {
 
     if ( strcmp(method, "CG") == 0 ) {
 
+        clock_t time_start = clock();
+
         /* compute A matrix */
 
         //top left point
@@ -1217,26 +1232,6 @@ int main() {
             }
         }
 
-        /*  USED THIS TO PRINT A AND MAKE SURE IT LOOKS GOOD... AND IT LOOKS RIGHT
-        //print array to make sure it looks good
-        for (j = 0; j < Ny*Nx; j++) {
-            for (i = 1; i < Ny*Nx; i++) {
-                printf("%f ", A[j][i]);
-            }
-            printf(" \n");
-        }
-        //save A to text file to look at it
-        char filename1[] = "A_matrix.txt";
-        FILE* fpointer1 = fopen(filename1, "w");
-        for (j = 0; j < Nx*Ny; j++) {
-            for (i = 0; i < Nx*Ny; i++) {
-                fprintf(fpointer1, "%.20lf ", A[j][i]);
-            }
-            fprintf(fpointer1, "\n");
-        }
-        fclose(fpointer1);
-        */
-
 
         // Initialization
         for (i = 0; i < Nx*Ny; i++) {
@@ -1259,7 +1254,7 @@ int main() {
         do {
 
             error[step] = sqrt(rho[step]);
-            printf("Step %d has error %f \n", step, error[step]);
+            
             step += 1;
 
             if (step == 1) {
@@ -1307,47 +1302,71 @@ int main() {
             
             
 
-        } while ( sqrt(rho[step]) > epsilon * sqrt(rho[0]) );
+
+
+
+            /* following line are not part of the method, just used for plotting infinity norm of error */
+            for (j = 0; j < Ny; j++) {
+                for (i = 0; i < Nx; i++) {
+                    phi[j][i] = phi_vec[j*Nx + i];
+                }
+            }
+
+
+
+
+            //compute laplace_p matrix (ONLY NECESSARY FOR ERROR AND VISUALIZATION)
+            for (j = 1; j < Ny - 1; j++) {
+                for (i = 1; i < Nx - 1; i++) {
+                    laplace_phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j - 1][i] + phi[j + 1][i]) * lambda - 4 * lambda * phi[j][i];
+                }
+            }
+            for (j = 1; j < Ny - 1; j++) {
+                i = 0;
+                laplace_phi[j][i] = (phi[j][i + 1] + phi[j - 1][i] + phi[j + 1][i]) * lambda - phi[j][i] * (3 * lambda);
+            }
+            for (j = 1; j < Ny - 1; j++) {
+                i = Nx - 1;
+                laplace_phi[j][i] = (phi[j][i - 1] + phi[j - 1][i] + phi[j + 1][i]) * lambda - phi[j][i] * (3 * lambda);
+            }
+            for (i = 1; i < Nx - 1; i++) {
+                j = 0;
+                laplace_phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j + 1][i]) * lambda - phi[j][i] * (3 * lambda);
+            }
+            for (i = 1; i < Nx - 1; i++) {
+                j = Ny - 1;
+                laplace_phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j - 1][i]) * lambda - phi[j][i] * (3 * lambda);
+            }
+            laplace_phi[0][0] = (phi[1][0] + phi[0][1]) * lambda - phi[0][0] * (2 * lambda);
+            laplace_phi[0][Nx - 1] = (phi[1][Nx - 1] + phi[0][Nx - 2]) * lambda - phi[0][Nx - 1] * (2 * lambda);
+            laplace_phi[Ny - 1][0] = (phi[Ny - 1][1] + phi[Ny - 2][0]) * lambda - phi[Ny - 1][0] * (2 * lambda);
+            laplace_phi[Ny - 1][Nx - 1] = (phi[Ny - 1][Nx - 2] + phi[Ny - 2][Nx - 1]) * lambda - phi[Ny - 1][Nx - 1] * (2 * lambda);
+
+
+            //save the error here 
+            max_error = 0;
+            for (j = 0; j < Ny; j++) {
+                for (i = 0; i < Nx; i++) {
+                    if (fabs(laplace_phi[j][i] - f[j][i]) > max_error) {
+                        max_error = fabs(laplace_phi[j][i] - f[j][i]);
+                    }
+                }
+            }
+            error[step] = max_error;
+
+
+
+
+
+
+
+
+
+        } while (max_error > epsilon);        
         
 
 
-        for (j = 0; j < Ny; j++) {
-            for (i = 0; i < Nx; i++) {
-                phi[j][i] = phi_vec[j*Nx + i];
-            }
-        }
-
-        //print final error
-        error[step] = sqrt(rho[step]);
-
-
-        //compute laplace_p matrix (ONLY NECESSARY FOR VISUALIZATION)
-        for (j = 1; j < Ny - 1; j++) {
-            for (i = 1; i < Nx - 1; i++) {
-                laplace_phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j - 1][i] + phi[j + 1][i]) * lambda - 4 * lambda * phi[j][i];
-            }
-        }
-        for (j = 1; j < Ny - 1; j++) {
-            i = 0;
-            laplace_phi[j][i] = (phi[j][i + 1] + phi[j - 1][i] + phi[j + 1][i]) * lambda - phi[j][i] * (3 * lambda);
-        }
-        for (j = 1; j < Ny - 1; j++) {
-            i = Nx - 1;
-            laplace_phi[j][i] = (phi[j][i - 1] + phi[j - 1][i] + phi[j + 1][i]) * lambda - phi[j][i] * (3 * lambda);
-        }
-        for (i = 1; i < Nx - 1; i++) {
-            j = 0;
-            laplace_phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j + 1][i]) * lambda - phi[j][i] * (3 * lambda);
-        }
-        for (i = 1; i < Nx - 1; i++) {
-            j = Ny - 1;
-            laplace_phi[j][i] = (phi[j][i + 1] + phi[j][i - 1] + phi[j - 1][i]) * lambda - phi[j][i] * (3 * lambda);
-        }
-        laplace_phi[0][0] = (phi[1][0] + phi[0][1]) * lambda - phi[0][0] * (2 * lambda);
-        laplace_phi[0][Nx - 1] = (phi[1][Nx - 1] + phi[0][Nx - 2]) * lambda - phi[0][Nx - 1] * (2 * lambda);
-        laplace_phi[Ny - 1][0] = (phi[Ny - 1][1] + phi[Ny - 2][0]) * lambda - phi[Ny - 1][0] * (2 * lambda);
-        laplace_phi[Ny - 1][Nx - 1] = (phi[Ny - 1][Nx - 2] + phi[Ny - 2][Nx - 1]) * lambda - phi[Ny - 1][Nx - 1] * (2 * lambda);
-
+        
 
 
         // Impose condition that the integral over the domain is equal to zero
@@ -1363,6 +1382,10 @@ int main() {
                 phi[j][i] = phi[j][i] - integral / (Nx * Ny);
             }
         }
+
+        clock_t time_end = clock();
+        double run_time = (double)(time_end - time_start) / CLOCKS_PER_SEC;
+        printf("run time = %f\n", run_time);
 
         print_now = print_current_data(step, laplace_phi, f, phi, error, Nx, Ny, method);
         printf("Data was printed for conjugate gradient method");
